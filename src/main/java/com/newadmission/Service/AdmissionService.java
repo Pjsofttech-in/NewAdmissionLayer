@@ -55,6 +55,6 @@ public interface AdmissionService {
     String sendOtpToParentEmail(String parentEmail);
     String resetParentPassword(String parentEmail, String otp, String newPassword);
 
-    Map<String, Long> getAdmissionsCountByStaffInBranch(String role, String email, String branchCode);
+    Map<String, Object> getAdmissionsCountByStaffInBranch(String role, String email, String branchCode,Integer month,Integer year);
 
 }

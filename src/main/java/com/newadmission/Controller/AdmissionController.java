@@ -324,12 +324,14 @@ public class AdmissionController {
     }
 
     @GetMapping("/countbystaff")
-    public ResponseEntity<Map<String, Long>> getAdmissionsCountByStaffInBranch(
+    public ResponseEntity<Map<String, Object>> getAdmissionsCountByStaffInBranch(
             @RequestParam String role,
             @RequestParam String email,
-            @RequestParam String branchCode
+            @RequestParam String branchCode,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer year
     ) {
-        Map<String, Long> result = admissionService.getAdmissionsCountByStaffInBranch(role, email, branchCode);
+        Map<String, Object> result = admissionService.getAdmissionsCountByStaffInBranch(role, email, branchCode,month,year);
         return ResponseEntity.ok(result);
     }
 

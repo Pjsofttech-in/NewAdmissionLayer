@@ -1636,13 +1636,12 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
     }
 
     @Override
-    public Map<String, Long> getAdmissionsCountByStaffInBranch(String role, String email, String branchCode) {
-        // ✅ Step 1: Permission check
+    public Map<String, Object> getAdmissionsCountByStaffInBranch(String role, String email, String branchCode, Integer month, Integer year) {
+
         if (!hasPermission(role, email, "GET")) {
             throw new AccessDeniedException("You do not have permission to view this data.");
         }
 
-        // ✅ Step 2: Superadmin specific validation (optional but safer)
         if ("SUPERADMIN".equalsIgnoreCase(role)) {
             Map<String, String> branches = webClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -1657,25 +1656,51 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
                 throw new AccessDeniedException("This branch does not belong to you");
             }
         } else {
-            // ✅ Step 3: Non-superadmin — branch/department/staff must match the branch they belong to
             String resolvedBranchCode = fetchBranchCodeByRole(role, email);
             if (!resolvedBranchCode.equals(branchCode)) {
                 throw new AccessDeniedException("You do not belong to this branch");
             }
         }
 
-        // ✅ Step 4: Fetch all admissions from this branch
         List<AdmissionForm> admissions = admissionRepository.findAll().stream()
                 .filter(a -> branchCode.equals(a.getBranchCode()))
-                .toList();
+                .collect(Collectors.toList());
 
-        // ✅ Step 5: Group by createdByEmail
-        return admissions.stream()
+        if (month != null && year != null) {
+            admissions = admissions.stream()
+                    .filter(a -> a.getDate() != null &&
+                            a.getDate().getMonthValue() == month &&
+                            a.getDate().getYear() == year)
+                    .collect(Collectors.toList());
+        } else if (year != null) {
+            admissions = admissions.stream()
+                    .filter(a -> a.getDate() != null && a.getDate().getYear() == year)
+                    .collect(Collectors.toList());
+        }
+
+        Map<String, Long> admissionCountByStaff = admissions.stream()
                 .filter(a -> a.getCreatedByEmail() != null && !a.getCreatedByEmail().isBlank())
                 .collect(Collectors.groupingBy(
                         AdmissionForm::getCreatedByEmail,
                         Collectors.counting()
                 ));
+
+        Map<String, Double> admissionRevenueByStaff = admissions.stream()
+                .filter(a -> a.getCreatedByEmail() != null && !a.getCreatedByEmail().isBlank())
+                .collect(Collectors.groupingBy(
+                        AdmissionForm::getCreatedByEmail,
+                        Collectors.summingDouble(a -> a.getPaidFees() != null ? a.getPaidFees() : 0.0)
+                ));
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        admissionCountByStaff.forEach((staffEmail, count) -> {
+            Map<String, Object> details = new LinkedHashMap<>();
+            details.put("admissionCount", count);
+            details.put("totalRevenue", admissionRevenueByStaff.getOrDefault(staffEmail, 0.0));
+            result.put(staffEmail, details);
+        });
+
+        return result;
     }
 
 
