@@ -217,6 +217,7 @@ public class AdmissionTeacherServiceImpl implements AdmissionTeacherService {
         }
 
         String token = jwtUtil.generateToken(teacher.getEmail());
+        String instituteEmail = String.valueOf(staffService.getInstituteEmailByBranchCode(teacher.getBranchCode()));
 
         Map<String, Object> teacherData = new HashMap<>();
         teacherData.put("id", teacher.getId());
@@ -224,6 +225,7 @@ public class AdmissionTeacherServiceImpl implements AdmissionTeacherService {
         teacherData.put("email", teacher.getEmail());
         teacherData.put("role", teacher.getRole());
         teacherData.put("branchCode", teacher.getBranchCode());
+        teacherData.put("instituteEmail", instituteEmail);
 
         return new LoginResponse(token, teacherData);
     }
