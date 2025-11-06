@@ -23,6 +23,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
 import java.util.List;
@@ -216,8 +217,15 @@ public class AdmissionTeacherServiceImpl implements AdmissionTeacherService {
             throw new RuntimeException("Invalid email or password");
         }
 
+        String branchCode = teacher.getBranchCode();
+
         String token = jwtUtil.generateToken(teacher.getEmail());
-        String instituteEmail = String.valueOf(staffService.getInstituteEmailByBranchCode(teacher.getBranchCode()));
+        String instituteEmail = staffService.getInstituteEmailByBranchCode(branchCode)
+                .block();
+        instituteEmail = instituteEmail.replace("instituteEmail =", "")
+                .replace("\"", "")
+                .trim();
+
 
         Map<String, Object> teacherData = new HashMap<>();
         teacherData.put("id", teacher.getId());
