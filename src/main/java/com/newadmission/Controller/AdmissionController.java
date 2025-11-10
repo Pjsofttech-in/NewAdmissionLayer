@@ -327,7 +327,7 @@ public class AdmissionController {
     public ResponseEntity<Map<String, Object>> getAdmissionsCountByStaffInBranch(
             @RequestParam String role,
             @RequestParam String email,
-            @RequestParam String branchCode,
+            @RequestParam(required = false) String branchCode,
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false) Integer year
     ) {

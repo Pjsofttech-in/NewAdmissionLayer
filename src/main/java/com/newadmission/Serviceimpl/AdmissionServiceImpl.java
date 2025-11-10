@@ -1642,7 +1642,10 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
             throw new AccessDeniedException("You do not have permission to view this data.");
         }
 
+        List<AdmissionForm> admissions;
+
         if ("SUPERADMIN".equalsIgnoreCase(role)) {
+
             Map<String, String> branches = webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/getBranchCodesByinstituteEmail")
@@ -1652,19 +1655,37 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
                     .bodyToMono(new ParameterizedTypeReference<Map<String, String>>() {})
                     .block();
 
-            if (branches == null || !branches.containsValue(branchCode)) {
-                throw new AccessDeniedException("This branch does not belong to you");
+            if (branches == null || branches.isEmpty()) {
+                throw new AccessDeniedException("No branches found for this institute email: " + email);
             }
+
+            if (branchCode != null && !branchCode.isBlank()) {
+                if (!branches.containsValue(branchCode)) {
+                    throw new AccessDeniedException("This branch does not belong to your institute.");
+                }
+
+                admissions = admissionRepository.findAll().stream()
+                        .filter(a -> branchCode.equals(a.getBranchCode()))
+                        .collect(Collectors.toList());
+
+            } else {
+                Set<String> branchCodes = new HashSet<>(branches.values());
+
+                admissions = admissionRepository.findAll().stream()
+                        .filter(a -> branchCodes.contains(a.getBranchCode()))
+                        .collect(Collectors.toList());
+            }
+
         } else {
             String resolvedBranchCode = fetchBranchCodeByRole(role, email);
-            if (!resolvedBranchCode.equals(branchCode)) {
+            if (branchCode != null && !resolvedBranchCode.equals(branchCode)) {
                 throw new AccessDeniedException("You do not belong to this branch");
             }
-        }
 
-        List<AdmissionForm> admissions = admissionRepository.findAll().stream()
-                .filter(a -> branchCode.equals(a.getBranchCode()))
-                .collect(Collectors.toList());
+            admissions = admissionRepository.findAll().stream()
+                    .filter(a -> resolvedBranchCode.equals(a.getBranchCode()))
+                    .collect(Collectors.toList());
+        }
 
         if (month != null && year != null) {
             admissions = admissions.stream()
@@ -1674,7 +1695,8 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
                     .collect(Collectors.toList());
         } else if (year != null) {
             admissions = admissions.stream()
-                    .filter(a -> a.getDate() != null && a.getDate().getYear() == year)
+                    .filter(a -> a.getDate() != null &&
+                            a.getDate().getYear() == year)
                     .collect(Collectors.toList());
         }
 
