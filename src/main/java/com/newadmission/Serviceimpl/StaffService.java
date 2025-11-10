@@ -93,6 +93,17 @@ public class StaffService
                 .collect(Collectors.toList());
     }
 
+    public Map<String, String> getBranchCodesWithNameByInstituteEmail(String instituteEmail) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/getBranchCodesByinstituteEmail")
+                        .queryParam("instituteEmail", instituteEmail)
+                        .build())
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, String>>() {})
+                .block();
+    }
+
     public List<InstituteLoginResponse> getInstituteDetailsOnly(String email) {
         InstituteClientWrapperResponse response = webClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -114,10 +125,6 @@ public class StaffService
                 .retrieve()
                 .bodyToMono(String.class);
     }
-
-
-
-
 
 
     public List<Map<String, Object>> getStaffNamesAndEmails(String branchCode) {
