@@ -13,4 +13,8 @@ public interface AdmissionSourceByRepository extends JpaRepository<AdmissionSour
 
     @Query("SELECT a FROM AdmissionSourceBy a WHERE a.branchCode = :branchCode")
     List<AdmissionSourceBy> findAllByBranchCode(@Param("branchCode") String branchCode);
+
+    @Query("SELECT a FROM AdmissionSourceBy a WHERE a.branchCode IN :branchCodes")
+    List<AdmissionSourceBy> findAllByBranchCodeIn(@Param("branchCodes") List<String> branchCodes);
+
 }

@@ -407,37 +407,69 @@ public class AdmissionServiceImpl implements AdmissionService {
 
     @Override
     public Map<String, Object> getAllAdmissions(AdmissionFilterRequest request) {
-        // Permission check
         if (!hasPermission(request.getRole(), request.getEmail(), "GET")) {
             throw new AccessDeniedException("No permission to view Admissions");
         }
 
-        // Ensure branchCode is set
-        if (request.getBranchCode() == null || request.getBranchCode().isEmpty()) {
-            String branchCode = fetchBranchCodeByRole(request.getRole(), request.getEmail());
-            request.setBranchCode(branchCode);
+        String role = request.getRole();
+        String email = request.getEmail();
+
+        try {
+            if ("SUPERADMIN".equalsIgnoreCase(role)) {
+                String branchCode = request.getBranchCode();
+
+                if (branchCode == null || branchCode.trim().isEmpty()) {
+                    List<String> branchCodes = staffService.getBranchCodesByInstituteEmail(email);
+
+                    if (branchCodes == null || branchCodes.isEmpty()) {
+                        return Map.of(
+                                "summary", Collections.emptyMap(),
+                                "admissions", Collections.emptyList(),
+                                "page", Collections.emptyMap()
+                        );
+                    }
+
+                    Specification<AdmissionForm> spec = AdmissionSpecification.withDynamicFilters(request)
+                            .and((root, query, cb) -> root.get("branchCode").in(branchCodes));
+
+                    Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.by("id").descending());
+                    Page<AdmissionForm> admissionsPage = admissionRepository.findAll(spec, pageable);
+                    List<AdmissionForm> fullList = admissionRepository.findAll(spec);
+
+                    return buildAdmissionResponse(fullList, admissionsPage, request.getSize());
+                }
+            }
+
+            if (request.getBranchCode() == null || request.getBranchCode().isEmpty()) {
+                String branchCode = fetchBranchCodeByRole(role, email);
+                request.setBranchCode(branchCode);
+            }
+
+            Specification<AdmissionForm> spec = AdmissionSpecification.withDynamicFilters(request);
+            Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.by("id").descending());
+            Page<AdmissionForm> admissionsPage = admissionRepository.findAll(spec, pageable);
+            List<AdmissionForm> fullList = admissionRepository.findAll(spec);
+
+            return buildAdmissionResponse(fullList, admissionsPage, request.getSize());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Map.of(
+                    "summary", Collections.emptyMap(),
+                    "admissions", Collections.emptyList(),
+                    "page", Collections.emptyMap()
+            );
         }
-
-        // 🔹 Use Specification for all dynamic filters including createdByEmail
-        Specification<AdmissionForm> spec = AdmissionSpecification.withDynamicFilters(request);
-
-        // Pagination & sorting
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.by("id").descending());
-        Page<AdmissionForm> admissionsPage = admissionRepository.findAll(spec, pageable);
-
-        // Full list for summary
-        List<AdmissionForm> fullList = admissionRepository.findAll(spec);
+    }
+    private Map<String, Object> buildAdmissionResponse(List<AdmissionForm> fullList, Page<AdmissionForm> admissionsPage, int pageSize) {
+        LocalDate today = LocalDate.now();
 
         long totalAdmissions = fullList.size();
         double totalFees = fullList.stream().mapToDouble(a -> a.getTotalFees() != null ? a.getTotalFees() : 0.0).sum();
         double paidFees = fullList.stream().mapToDouble(a -> a.getPaidFees() != null ? a.getPaidFees() : 0.0).sum();
         double pendingFees = fullList.stream().mapToDouble(a -> a.getPendingFees() != null ? a.getPendingFees() : 0.0).sum();
 
-        LocalDate today = LocalDate.now();
-        String branchCode = request.getBranchCode();
-
         double currentPending = fullList.stream()
-                .filter(a -> branchCode.equals(a.getBranchCode()))
                 .flatMap(a -> a.getInstallments().stream())
                 .filter(inst -> inst.getStatus() == null || !"PAID".equalsIgnoreCase(inst.getStatus()))
                 .filter(inst -> inst.getDueDate() != null && !inst.getDueDate().isAfter(today))
@@ -445,14 +477,12 @@ public class AdmissionServiceImpl implements AdmissionService {
                 .sum();
 
         double futurePending = fullList.stream()
-                .filter(a -> branchCode.equals(a.getBranchCode()))
                 .flatMap(a -> a.getInstallments().stream())
                 .filter(inst -> inst.getStatus() == null || !"PAID".equalsIgnoreCase(inst.getStatus()))
                 .filter(inst -> inst.getDueDate() != null && inst.getDueDate().isAfter(today))
                 .mapToDouble(Installment::getAmount)
                 .sum();
 
-        // Summary map
         Map<String, Object> summary = new HashMap<>();
         summary.put("totalAdmissions", totalAdmissions);
         summary.put("totalFees", totalFees);
@@ -461,14 +491,12 @@ public class AdmissionServiceImpl implements AdmissionService {
         summary.put("currentPending", currentPending);
         summary.put("futurePending", futurePending);
 
-        // Pagination info
         Map<String, Object> page = new HashMap<>();
         page.put("size", admissionsPage.getSize());
         page.put("number", admissionsPage.getNumber());
         page.put("totalElements", totalAdmissions);
-        page.put("totalPages", (int) Math.ceil((double) totalAdmissions / request.getSize()));
+        page.put("totalPages", (int) Math.ceil((double) totalAdmissions / pageSize));
 
-        // Final response
         Map<String, Object> response = new HashMap<>();
         response.put("summary", summary);
         response.put("admissions", admissionsPage.getContent());
@@ -476,12 +504,6 @@ public class AdmissionServiceImpl implements AdmissionService {
 
         return response;
     }
-
-
-
-
-
-
 
 
     @Override

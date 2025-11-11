@@ -3,6 +3,7 @@ package com.newadmission.Repository;
 import com.newadmission.Entity.AdmissionReference;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -12,4 +13,7 @@ public interface AdmissionReferenceRepository extends JpaRepository<AdmissionRef
 
     @Query("SELECT r FROM AdmissionReference r WHERE r.branchCode = :branchCode")
     List<AdmissionReference> findAllByBranchCode(String branchCode);
+
+    @Query("SELECT a FROM AdmissionReference a WHERE a.branchCode IN :branchCodes")
+    List<AdmissionReference> findAllByBranchCodeIn(@Param("branchCodes") List<String> branchCodes);
 }

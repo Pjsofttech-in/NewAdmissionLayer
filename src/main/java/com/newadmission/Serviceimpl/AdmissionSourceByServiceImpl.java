@@ -11,6 +11,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,8 +37,25 @@ public class AdmissionSourceByServiceImpl implements AdmissionSourceByService {
     }
 
     private boolean hasPermission(String role, String email, String action) {
+
+        if ("SUPERADMIN".equalsIgnoreCase(role) && "GET".equalsIgnoreCase(action)) {
+            try {
+                Boolean exists = webClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/checkClientEmailExist")
+                                .queryParam("email", email)
+                                .build())
+                        .retrieve()
+                        .bodyToMono(Boolean.class)
+                        .block();
+                return Boolean.TRUE.equals(exists);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
         if ("USER".equalsIgnoreCase(role)) {
-            return "GET".equalsIgnoreCase(action);
+            return "POST".equalsIgnoreCase(action);
         }
         if ("BRANCH".equalsIgnoreCase(role)) {
             try {
@@ -56,6 +74,7 @@ public class AdmissionSourceByServiceImpl implements AdmissionSourceByService {
                 return false;
             }
         }
+
         return switch (role.toUpperCase()) {
             case "STAFF" -> {
                 Map<String, Boolean> perms = staffService.getPermissionsByEmail(email);
@@ -117,12 +136,33 @@ public class AdmissionSourceByServiceImpl implements AdmissionSourceByService {
     @Override
 //    @Cacheable(value = "allSourceBy", key = "#branchCode + '-' + #role + '-' + #email", unless = "#result == null || #result.isEmpty()")
     public List<AdmissionSourceBy> getAllSourceBy(String role, String email, String branchCode) {
+
         if (!hasPermission(role, email, "GET")) {
             throw new AccessDeniedException("You do not have permission to view sources");
         }
 
-        return repository.findAllByBranchCode(branchCode);
+        try {
+            if ("SUPERADMIN".equalsIgnoreCase(role)) {
+                if (branchCode != null && !branchCode.trim().isEmpty()) {
+                    return repository.findAllByBranchCode(branchCode);
+                }
+
+                List<String> branchCodes = staffService.getBranchCodesByInstituteEmail(email);
+                if (branchCodes == null || branchCodes.isEmpty()) {
+                    return Collections.emptyList();
+                }
+                return repository.findAllByBranchCodeIn(branchCodes);
+            }
+
+            return repository.findAllByBranchCode(branchCode);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
     }
+
+
 
     @Override
 //    @CacheEvict(value = {"allSourceBy", "sourceById"}, allEntries = true)

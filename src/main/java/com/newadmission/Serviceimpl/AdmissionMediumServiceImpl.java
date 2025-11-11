@@ -10,6 +10,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,8 +36,25 @@ public class AdmissionMediumServiceImpl implements AdmissionMediumService {
     }
 
     private boolean hasPermission(String role, String email, String action) {
+
+        if ("SUPERADMIN".equalsIgnoreCase(role) && "GET".equalsIgnoreCase(action)) {
+            try {
+                Boolean exists = webClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/checkClientEmailExist")
+                                .queryParam("email", email)
+                                .build())
+                        .retrieve()
+                        .bodyToMono(Boolean.class)
+                        .block();
+                return Boolean.TRUE.equals(exists);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
         if ("USER".equalsIgnoreCase(role)) {
-            return "GET".equalsIgnoreCase(action);
+            return "POST".equalsIgnoreCase(action);
         }
         if ("BRANCH".equalsIgnoreCase(role)) {
             try {
@@ -80,7 +98,6 @@ public class AdmissionMediumServiceImpl implements AdmissionMediumService {
             default -> false;
         };
     }
-
     private String fetchBranchCodeByRole(String role, String email) {
         String endpoint = switch (role.toLowerCase()) {
             case "branch" -> "/branch/getbranchcode";
@@ -120,7 +137,25 @@ public class AdmissionMediumServiceImpl implements AdmissionMediumService {
             throw new AccessDeniedException("You do not have permission to view mediums");
         }
 
-        return admissionMediumRepository.findAllByBranchCode(branchCode);
+        try {
+            if ("SUPERADMIN".equalsIgnoreCase(role)) {
+                if (branchCode != null && !branchCode.trim().isEmpty()) {
+                    return admissionMediumRepository.findAllByBranchCode(branchCode);
+                }
+
+                List<String> branchCodes = staffService.getBranchCodesByInstituteEmail(email);
+                if (branchCodes == null || branchCodes.isEmpty()) {
+                    return Collections.emptyList();
+                }
+                return admissionMediumRepository.findAllByBranchCodeIn(branchCodes);
+            }
+
+            return admissionMediumRepository.findAllByBranchCode(branchCode);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
     }
 
     @Override
