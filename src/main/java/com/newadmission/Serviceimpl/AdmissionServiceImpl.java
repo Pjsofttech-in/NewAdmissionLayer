@@ -1748,4 +1748,20 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
     }
 
 
+    @Override
+    public List<Map<String, Object>> getStaffInfo(String role, String email, String branchCode) {
+
+        if (!hasPermission(role, email, "GET")) {
+            throw new AccessDeniedException("You do not have permission to get Data.");
+        }
+        if ("SUPERADMIN".equalsIgnoreCase(role)) {
+            return staffService.getStaffInfoForSuperAdmin(branchCode,email);
+        } else {
+            String branchCode1 = fetchBranchCodeByRole(role,email);
+            return staffService.getStaffNamesAndEmails(branchCode1);
+        }
+    }
+
+
+
 }

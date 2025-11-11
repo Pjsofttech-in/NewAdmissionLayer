@@ -20,6 +20,8 @@ public class StaffController
     @Autowired
     private StaffService staffLoginService;
 
+
+
     @PostMapping("/stafflogin")
     public Mono<ResponseEntity<LoginResponse>> loginStaff(@RequestBody LoginRequest request) {
         return staffLoginService.loginStaff(request)
@@ -51,10 +53,6 @@ public class StaffController
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/getStaffInfoByBranchCode")
-    public List<Map<String, Object>> getStaffBasicInfo(@RequestParam String branchCode) {
-        return staffLoginService.getStaffNamesAndEmails(branchCode);
-    }
 
     @GetMapping("/getBranchCodeByInstituteEmail")
     public ResponseEntity<Map<String, String>> getBranchCodesByInstituteEmail(@RequestParam String instituteEmail)

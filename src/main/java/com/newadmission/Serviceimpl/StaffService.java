@@ -5,6 +5,7 @@ import com.newadmission.DTO.InstituteLoginResponse;
 import com.newadmission.JWT.LoginRequest;
 import com.newadmission.JWT.LoginResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Email;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -142,6 +143,39 @@ public class StaffService
                 ))
                 .collectList()
                 .block();
+    }
+
+    public List<Map<String, Object>> getStaffInfoForSuperAdmin(String branchCode, String instituteEmail) {
+        if (branchCode != null && !branchCode.isEmpty()) {
+            return webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/getStaffbybranchCode")
+                            .queryParam("branchCode", branchCode)
+                            .build())
+                    .retrieve()
+                    .bodyToFlux(Map.class)
+                    .map(staff -> Map.of(
+                            "name", staff.get("staffName"),
+                            "email", staff.get("staffEmail")
+                    ))
+                    .collectList()
+                    .block();
+        } else {
+            return webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/getStaffbyinstituteEmail")
+                            .queryParam("instituteEmail", instituteEmail)
+                            .build())
+                    .retrieve()
+                    .bodyToFlux(Map.class)
+                    .map(staff -> Map.of(
+                            "name", staff.get("staffName"),
+                            "email", staff.get("staffEmail"),
+                            "branchCode", staff.get("branchCode")
+                    ))
+                    .collectList()
+                    .block();
+        }
     }
 
 }

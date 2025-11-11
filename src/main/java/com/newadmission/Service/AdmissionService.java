@@ -56,5 +56,5 @@ public interface AdmissionService {
     String resetParentPassword(String parentEmail, String otp, String newPassword);
 
     Map<String, Object> getAdmissionsCountByStaffInBranch(String role, String email, String branchCode,Integer month,Integer year);
-
+    List<Map<String, Object>> getStaffInfo(String role, String email, String branchCode);
 }

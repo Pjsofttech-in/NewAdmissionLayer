@@ -336,4 +336,13 @@ public class AdmissionController {
     }
 
 
+    @GetMapping("/getStaffInfoByBranchCode")
+    public List<Map<String, Object>> getStaffBasicInfo(
+            @RequestParam(required = false) String branchCode,
+            @RequestParam String role,
+            @RequestParam String email) {
+
+        return admissionService.getStaffInfo(role, email, branchCode);
+    }
+
 }
