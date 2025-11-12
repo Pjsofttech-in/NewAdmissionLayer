@@ -2,6 +2,7 @@ package com.newadmission.Serviceimpl;
 
 import com.beust.jcommander.internal.Nullable;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -497,51 +498,33 @@ public class AdmissionServiceImpl implements AdmissionService {
         page.put("totalElements", totalAdmissions);
         page.put("totalPages", (int) Math.ceil((double) totalAdmissions / pageSize));
 
-        List<Map<String, Object>> admissionList = admissionsPage.getContent().stream().map(admission -> {
-            Map<String, Object> admissionMap = new HashMap<>();
-            admissionMap.put("id", admission.getId());
-            admissionMap.put("name", admission.getName());
-            admissionMap.put("mobile1", admission.getMobile1());
-            admissionMap.put("coursename", admission.getCoursename());
-            admissionMap.put("email", admission.getEmail());
-            admissionMap.put("totalFees", admission.getTotalFees());
-            admissionMap.put("paidFees", admission.getPaidFees());
-            admissionMap.put("pendingFees", admission.getPendingFees());
-            admissionMap.put("status", admission.getStatus());
-            admissionMap.put("branchCode", admission.getBranchCode());
-            admissionMap.put("paymentMode", admission.getPaymentMode());
-            admissionMap.put("paymentMethod", admission.getPaymentMethod());
-            admissionMap.put("paymentDate", admission.getPaymentDate());
-            admissionMap.put("gender", admission.getGender());
-            admissionMap.put("dob", admission.getDob());
-            admissionMap.put("registrationNo", admission.getRegistrationNo());
-            admissionMap.put("remark", admission.getRemark());
-            admissionMap.put("stream", admission.getStream());
-            admissionMap.put("studentType", admission.getStudentType());
-            admissionMap.put("classType", admission.getClassType());
-            admissionMap.put("academicYear", admission.getAcademicYear());
-            admissionMap.put("createdByEmail", admission.getCreatedByEmail());
 
-            LocalDate nearestDueDate = null;
-            if ("installment".equalsIgnoreCase(admission.getStatus()) && admission.getInstallments() != null) {
-                nearestDueDate = admission.getInstallments().stream()
-                        .filter(inst -> inst.getDueDate() != null)
-                        .map(Installment::getDueDate)
-                        .filter(date -> !date.isBefore(today)) // only today or future
-                        .sorted()
-                        .findFirst()
-                        .orElse(null);
-            } else {
-                nearestDueDate = admission.getDueDate();
-            }
-            admissionMap.put("dueDate", nearestDueDate);
+        List<AdmissionForm> admissionsWithDueDate = admissionsPage.getContent().stream()
+                .map(admission -> {
+                    LocalDate dueDate = null;
 
-            return admissionMap;
-        }).toList();
+                    if (admission.getInstallments() != null && !admission.getInstallments().isEmpty()) {
+                        List<LocalDate> dueDates = admission.getInstallments().stream()
+                                .filter(inst -> inst.getDueDate() != null)
+                                .filter(inst -> inst.getStatus() == null || !"PAID".equalsIgnoreCase(inst.getStatus()))
+                                .map(Installment::getDueDate)
+                                .sorted()
+                                .toList();
+
+                        if (!dueDates.isEmpty()) {
+                            dueDate = dueDates.get(0); // pick earliest
+                        }
+                    }
+
+                    // set computed due date
+                    admission.setDueDate(dueDate);
+                    return admission;
+                })
+                .toList();
 
         Map<String, Object> response = new HashMap<>();
         response.put("summary", summary);
-        response.put("admissions", admissionsPage.getContent());
+        response.put("admissions", admissionsWithDueDate);
         response.put("page", page);
 
         return response;
