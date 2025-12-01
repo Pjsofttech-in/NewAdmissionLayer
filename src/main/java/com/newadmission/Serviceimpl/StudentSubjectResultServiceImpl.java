@@ -435,20 +435,24 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
 
     @Override
 //    @Cacheable(value = "teacherStudentResults", key = "#email")
-    public Page<StudentResultResponse> getAllStudentResults(String role, String email, String branchCode,
-            StudentResultFilterRequest filter, int page, int size) {
+    public Page<StudentResultResponse> getAllStudentResults(
+            String role,
+            String email,
+            String branchCode,
+            StudentResultFilterRequest filter,
+            int page,
+            int size) {
 
         if (!hasPermission(role, email, "GET")) {
             throw new AccessDeniedException("No permission to view student results");
         }
 
-        String batchName = (filter != null) ? filter.getBatchName() : null;
-        String fullName = (filter != null) ? filter.getFullName() : null;
-        String examType = (filter != null) ? filter.getExamType() : null;
-        String paperType = (filter != null) ? filter.getPaperType() : null;
-        String status = (filter != null) ? filter.getStatus() : null;
+        String batchName   = (filter != null) ? filter.getBatchName()   : null;
+        String fullName    = (filter != null) ? filter.getFullName()    : null;
+        String examType    = (filter != null) ? filter.getExamType()    : null;
+        String paperType   = (filter != null) ? filter.getPaperType()   : null;
+        String status      = (filter != null) ? filter.getStatus()      : null;
         String subjectName = (filter != null) ? filter.getSubjectName() : null;
-
 
         List<StudentSubjectResult> allResults = repository.findAllByBranchCode(branchCode)
                 .stream()
@@ -461,9 +465,16 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
                     if (details == null || details.getClassroom() == null) return false;
 
                     AdmissionClassRoom classroom = details.getClassroom();
-                    return classroom.getTeachers()
-                            .stream()
-                            .anyMatch(t -> t.getEmail().equalsIgnoreCase(email));
+
+                    // If role is TEACHER -> filter by teacher's email
+                    if ("TEACHER".equalsIgnoreCase(role)) {
+                        return classroom.getTeachers()
+                                .stream()
+                                .anyMatch(t -> t.getEmail().equalsIgnoreCase(email));
+                    }
+
+                    // If role is STAFF / ADMIN / SUPERADMIN -> don't filter by teacher
+                    return true;
                 })
                 .collect(Collectors.toList());
 
@@ -502,7 +513,7 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
                     .collect(Collectors.toList());
 
             int totalObtained = results.stream()
-                    .mapToInt(r -> r.getObtainedMarks())
+                    .mapToInt(StudentSubjectResult::getObtainedMarks)
                     .sum();
 
             int totalSubjectMarks = results.stream()
@@ -530,7 +541,7 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
             responseList.add(dto);
         }
 
-        List<StudentResultResponse> filteredList = responseList.stream()
+         List<StudentResultResponse> filteredList = responseList.stream()
 
                 .filter(r -> batchName == null ||
                         (r.getBatchName() != null &&
@@ -565,6 +576,7 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
 
         return new PageImpl<>(paginated, PageRequest.of(page, size), filteredList.size());
     }
+
 
 
     @Override
