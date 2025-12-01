@@ -447,18 +447,20 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
             throw new AccessDeniedException("No permission to view student results");
         }
 
-        String batchName   = (filter != null) ? filter.getBatchName()   : null;
-        String fullName    = (filter != null) ? filter.getFullName()    : null;
-        String examType    = (filter != null) ? filter.getExamType()    : null;
-        String paperType   = (filter != null) ? filter.getPaperType()   : null;
-        String status      = (filter != null) ? filter.getStatus()      : null;
-        String subjectName = (filter != null) ? filter.getSubjectName() : null;
+        String batchName     = (filter != null) ? filter.getBatchName()   : null;
+        String fullName      = (filter != null) ? filter.getFullName()    : null;
+        String status        = (filter != null) ? filter.getStatus()      : null;
+
+        String academicYear  = (filter != null) ? filter.getAcademicYear() : null;
+        String coursename    = (filter != null) ? filter.getCoursename()   : null;
+        String mediumName    = (filter != null) ? filter.getMediumName()   : null;
 
         List<StudentSubjectResult> allResults = repository.findAllByBranchCode(branchCode)
                 .stream()
                 .sorted(Comparator.comparing(r -> r.getStudent().getId()))
                 .collect(Collectors.toList());
 
+        // 2) Apply teacher role-based filter
         List<StudentSubjectResult> filteredResults = allResults.stream()
                 .filter(result -> {
                     ClassRoomSubjectDetails details = result.getSubjectDetails();
@@ -466,25 +468,24 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
 
                     AdmissionClassRoom classroom = details.getClassroom();
 
-                    // If role is TEACHER -> filter by teacher's email
+                    // Only teacher gets restricted data
                     if ("TEACHER".equalsIgnoreCase(role)) {
                         return classroom.getTeachers()
                                 .stream()
                                 .anyMatch(t -> t.getEmail().equalsIgnoreCase(email));
                     }
 
-                    // If role is STAFF / ADMIN / SUPERADMIN -> don't filter by teacher
                     return true;
                 })
                 .collect(Collectors.toList());
 
+
         Map<AdmissionForm, List<StudentSubjectResult>> resultsByStudent =
-                filteredResults.stream().collect(
-                        Collectors.groupingBy(
-                                StudentSubjectResult::getStudent,
-                                LinkedHashMap::new,
-                                Collectors.toList()
-                        ));
+                filteredResults.stream().collect(Collectors.groupingBy(
+                        StudentSubjectResult::getStudent,
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
 
         List<StudentResultResponse> responseList = new ArrayList<>();
 
@@ -531,7 +532,8 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
                     .batchName(classroom != null ? classroom.getBatchName() : null)
                     .totalObtainedMarks(totalObtained)
                     .totalSubjectMarks(totalSubjectMarks)
-                    .percentage(totalSubjectMarks > 0 ? (totalObtained * 100.0) / totalSubjectMarks : 0)
+                    .percentage(totalSubjectMarks > 0 ?
+                            (totalObtained * 100.0) / totalSubjectMarks : 0)
                     .status(subjectResults.stream()
                             .anyMatch(r -> r.getObtainedMarks() < r.getPassingMarks()) ? "Fail" : "Pass")
                     .subjectResults(subjectResults)
@@ -541,42 +543,48 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
             responseList.add(dto);
         }
 
-         List<StudentResultResponse> filteredList = responseList.stream()
+        // 4) Apply final filters on DTO
+        List<StudentResultResponse> filteredList = responseList.stream()
 
+                // Batch name filter
                 .filter(r -> batchName == null ||
                         (r.getBatchName() != null &&
                                 r.getBatchName().toLowerCase().contains(batchName.toLowerCase())))
 
+                // Student full name filter
                 .filter(r -> fullName == null ||
                         r.getStudentName().toLowerCase().contains(fullName.toLowerCase()))
 
-                .filter(r -> examType == null ||
-                        r.getSubjectResults().stream()
-                                .anyMatch(s -> s.getExamType().equalsIgnoreCase(examType)))
+                // NEW → Filter by academicYear
+                .filter(r -> academicYear == null ||
+                        (r.getAcademicYear() != null &&
+                                r.getAcademicYear().equalsIgnoreCase(academicYear)))
 
-                .filter(r -> paperType == null ||
-                        r.getSubjectResults().stream()
-                                .anyMatch(s -> s.getPaperType().equalsIgnoreCase(paperType)))
+                // NEW → Filter by coursename
+                .filter(r -> coursename == null ||
+                        (r.getCoursename() != null &&
+                                r.getCoursename().equalsIgnoreCase(coursename)))
 
+                // NEW → Filter by mediumName
+                .filter(r -> mediumName == null ||
+                        (r.getMediumName() != null &&
+                                r.getMediumName().equalsIgnoreCase(mediumName)))
+
+                // Status filter → Pass / Fail
                 .filter(r -> status == null ||
                         r.getStatus().equalsIgnoreCase(status))
 
-                .filter(r -> subjectName == null ||
-                        r.getSubjectResults().stream()
-                                .anyMatch(s -> s.getSubjectName().toLowerCase()
-                                        .contains(subjectName.toLowerCase())))
-
                 .collect(Collectors.toList());
 
+        // 5) Manual pagination
         int start = (int) PageRequest.of(page, size).getOffset();
         int end = Math.min(start + size, filteredList.size());
 
         List<StudentResultResponse> paginated =
-                start >= filteredList.size() ? new ArrayList<>() : filteredList.subList(start, end);
+                (start >= filteredList.size()) ? new ArrayList<>() : filteredList.subList(start, end);
 
         return new PageImpl<>(paginated, PageRequest.of(page, size), filteredList.size());
     }
-
 
 
     @Override

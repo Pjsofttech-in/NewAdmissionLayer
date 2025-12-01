@@ -13,8 +13,8 @@ public class StudentResultFilterRequest
 {
     private String batchName;
     private String fullName;
-    private String examType;
-    private String paperType;
     private String status;      // Pass / Fail
-    private String subjectName;
+    private String academicYear;
+    private String coursename;
+    private String mediumName;
 }
