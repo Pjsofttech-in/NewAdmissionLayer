@@ -1,9 +1,12 @@
 package com.newadmission.Controller;
 
+import com.newadmission.DTO.StudentResultFilterRequest;
 import com.newadmission.DTO.StudentResultResponse;
 import com.newadmission.Entity.StudentSubjectResult;
 import com.newadmission.Service.StudentSubjectResultService;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -68,14 +71,18 @@ public class StudentSubjectResultController {
 }
 
     @GetMapping("/getAllStudentResults")
-    public ResponseEntity<List<StudentResultResponse>> getAllStudentResults(
+    public ResponseEntity<Page<StudentResultResponse>> getAllStudentResults(
             @RequestParam String role,
             @RequestParam String email,
-            @RequestParam String branchCode) {
-
-        List<StudentResultResponse> results = service.getAllStudentResults(role, email, branchCode);
+            @RequestParam String branchCode,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestBody(required = false) StudentResultFilterRequest filterRequest)
+    {
+        Page<StudentResultResponse> results = service.getAllStudentResults(role, email, branchCode, filterRequest, page, size);
         return ResponseEntity.ok(results);
     }
+
 
     @GetMapping("/passfailcount")
     public ResponseEntity<List<Map<String, Object>>> getPassFailCount(

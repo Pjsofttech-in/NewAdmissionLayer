@@ -1,5 +1,6 @@
 package com.newadmission.Serviceimpl;
 
+import com.newadmission.DTO.StudentResultFilterRequest;
 import com.newadmission.DTO.StudentResultResponse;
 import com.newadmission.DTO.SubjectResultDto;
 import com.newadmission.Entity.*;
@@ -11,6 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -431,46 +435,58 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
 
     @Override
 //    @Cacheable(value = "teacherStudentResults", key = "#email")
-    public List<StudentResultResponse> getAllStudentResults(String role, String email, String branchCode) {
+    public Page<StudentResultResponse> getAllStudentResults(String role, String email, String branchCode,
+            StudentResultFilterRequest filter, int page, int size) {
+
         if (!hasPermission(role, email, "GET")) {
             throw new AccessDeniedException("No permission to view student results");
         }
 
-        // Step 1: Fetch all results by branch
+        String batchName = (filter != null) ? filter.getBatchName() : null;
+        String fullName = (filter != null) ? filter.getFullName() : null;
+        String examType = (filter != null) ? filter.getExamType() : null;
+        String paperType = (filter != null) ? filter.getPaperType() : null;
+        String status = (filter != null) ? filter.getStatus() : null;
+        String subjectName = (filter != null) ? filter.getSubjectName() : null;
+
+
         List<StudentSubjectResult> allResults = repository.findAllByBranchCode(branchCode)
                 .stream()
                 .sorted(Comparator.comparing(r -> r.getStudent().getId()))
                 .collect(Collectors.toList());
 
-        // ✅ Step 2: Filter results - keep only those classrooms where this teacher is assigned
         List<StudentSubjectResult> filteredResults = allResults.stream()
                 .filter(result -> {
                     ClassRoomSubjectDetails details = result.getSubjectDetails();
                     if (details == null || details.getClassroom() == null) return false;
 
                     AdmissionClassRoom classroom = details.getClassroom();
-                    // Check if teacher is assigned to this classroom
-                    return classroom.getTeachers().stream()
-                            .anyMatch(teacher -> teacher.getEmail().equalsIgnoreCase(email));
+                    return classroom.getTeachers()
+                            .stream()
+                            .anyMatch(t -> t.getEmail().equalsIgnoreCase(email));
                 })
                 .collect(Collectors.toList());
 
-        // Step 3: Group filtered results by student
-        Map<AdmissionForm, List<StudentSubjectResult>> resultsByStudent = filteredResults.stream()
-                .collect(Collectors.groupingBy(
-                        StudentSubjectResult::getStudent,
-                        LinkedHashMap::new,
-                        Collectors.toList()
-                ));
+        Map<AdmissionForm, List<StudentSubjectResult>> resultsByStudent =
+                filteredResults.stream().collect(
+                        Collectors.groupingBy(
+                                StudentSubjectResult::getStudent,
+                                LinkedHashMap::new,
+                                Collectors.toList()
+                        ));
 
         List<StudentResultResponse> responseList = new ArrayList<>();
 
         for (Map.Entry<AdmissionForm, List<StudentSubjectResult>> entry : resultsByStudent.entrySet()) {
+
             AdmissionForm student = entry.getKey();
             List<StudentSubjectResult> results = entry.getValue();
 
-            ClassRoomSubjectDetails firstSubjectDetails = results.isEmpty() ? null : results.get(0).getSubjectDetails();
-            AdmissionClassRoom classroom = firstSubjectDetails != null ? firstSubjectDetails.getClassroom() : null;
+            ClassRoomSubjectDetails firstDetail =
+                    results.isEmpty() ? null : results.get(0).getSubjectDetails();
+
+            AdmissionClassRoom classroom =
+                    firstDetail != null ? firstDetail.getClassroom() : null;
 
             List<SubjectResultDto> subjectResults = results.stream()
                     .map(r -> SubjectResultDto.builder()
@@ -486,14 +502,14 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
                     .collect(Collectors.toList());
 
             int totalObtained = results.stream()
-                    .mapToInt(r -> r.getObtainedMarks() != 0 ? r.getObtainedMarks() : 0)
+                    .mapToInt(r -> r.getObtainedMarks())
                     .sum();
 
             int totalSubjectMarks = results.stream()
-                    .mapToInt(r -> r.getSubjectDetails() != null ? r.getSubjectDetails().getTotalMarks() : 0)
+                    .mapToInt(r -> r.getSubjectDetails().getTotalMarks())
                     .sum();
 
-            StudentResultResponse studentResult = StudentResultResponse.builder()
+            StudentResultResponse dto = StudentResultResponse.builder()
                     .studentId(student.getId())
                     .studentName(student.getName())
                     .email(student.getEmail())
@@ -504,18 +520,52 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
                     .batchName(classroom != null ? classroom.getBatchName() : null)
                     .totalObtainedMarks(totalObtained)
                     .totalSubjectMarks(totalSubjectMarks)
-                    .percentage((totalSubjectMarks > 0) ? (totalObtained * 100.0) / totalSubjectMarks : 0.0)
+                    .percentage(totalSubjectMarks > 0 ? (totalObtained * 100.0) / totalSubjectMarks : 0)
                     .status(subjectResults.stream()
                             .anyMatch(r -> r.getObtainedMarks() < r.getPassingMarks()) ? "Fail" : "Pass")
                     .subjectResults(subjectResults)
                     .resultDate(results.get(0).getResultDate())
                     .build();
 
-            responseList.add(studentResult);
+            responseList.add(dto);
         }
 
-        return responseList;
+        List<StudentResultResponse> filteredList = responseList.stream()
+
+                .filter(r -> batchName == null ||
+                        (r.getBatchName() != null &&
+                                r.getBatchName().toLowerCase().contains(batchName.toLowerCase())))
+
+                .filter(r -> fullName == null ||
+                        r.getStudentName().toLowerCase().contains(fullName.toLowerCase()))
+
+                .filter(r -> examType == null ||
+                        r.getSubjectResults().stream()
+                                .anyMatch(s -> s.getExamType().equalsIgnoreCase(examType)))
+
+                .filter(r -> paperType == null ||
+                        r.getSubjectResults().stream()
+                                .anyMatch(s -> s.getPaperType().equalsIgnoreCase(paperType)))
+
+                .filter(r -> status == null ||
+                        r.getStatus().equalsIgnoreCase(status))
+
+                .filter(r -> subjectName == null ||
+                        r.getSubjectResults().stream()
+                                .anyMatch(s -> s.getSubjectName().toLowerCase()
+                                        .contains(subjectName.toLowerCase())))
+
+                .collect(Collectors.toList());
+
+        int start = (int) PageRequest.of(page, size).getOffset();
+        int end = Math.min(start + size, filteredList.size());
+
+        List<StudentResultResponse> paginated =
+                start >= filteredList.size() ? new ArrayList<>() : filteredList.subList(start, end);
+
+        return new PageImpl<>(paginated, PageRequest.of(page, size), filteredList.size());
     }
+
 
     @Override
 //    @Cacheable(value = "passFailCountsCache", key = "#role + '-' + #email + '-' + (#examTypeParam!=null?#examTypeParam:'') + '-' + (#paperTypeParam!=null?#paperTypeParam:'')")
