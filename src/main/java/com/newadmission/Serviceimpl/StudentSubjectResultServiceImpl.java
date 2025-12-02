@@ -448,7 +448,7 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
         }
 
         String batchName     = (filter != null) ? filter.getBatchName()   : null;
-        String fullName      = (filter != null) ? filter.getFullName()    : null;
+        String fullName      = (filter != null) ? filter.getStudentName()    : null;
         String status        = (filter != null) ? filter.getStatus()      : null;
 
         String academicYear  = (filter != null) ? filter.getAcademicYear() : null;

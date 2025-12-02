@@ -12,7 +12,7 @@ import lombok.Setter;
 public class StudentResultFilterRequest
 {
     private String batchName;
-    private String fullName;
+    private String studentName;
     private String status;      // Pass / Fail
     private String academicYear;
     private String coursename;
