@@ -16,7 +16,8 @@ public interface StudentSubjectResultService {
     void delete(Long id, String role, String email);
     public List<StudentSubjectResult> getByStudentId(Long studentId, String role, String email);
     StudentResultResponse getStudentResultsByStudentId(Long studentId, String role, String email);
-    Page<StudentResultResponse> getAllStudentResults(String role, String email, String branchCode,
+    List<StudentResultResponse> getAllStudentResults(String role, String email, String branchCode);
+    Page<StudentResultResponse> getAllStudentResultsAdminSide(String role, String email, String branchCode,
                                                      StudentResultFilterRequest filter, int page, int size);
     List<Map<String, Object>> getPassFailCounts(String role, String email, String examType, String paperType);
 

@@ -432,10 +432,115 @@ public class StudentSubjectResultServiceImpl implements StudentSubjectResultServ
                 .build();
     }
 
+    @Override
+// @Cacheable(value = "teacherStudentResults", key = "#email")
+    public List<StudentResultResponse> getAllStudentResults(String role, String email, String branchCode)
+    {
+
+        if (!hasPermission(role, email, "GET")) {
+            throw new AccessDeniedException("No permission to view student results");
+        }
+
+        // Step 1: Fetch all results by branch
+        List<StudentSubjectResult> allResults = repository.findAllByBranchCode(branchCode)
+                .stream()
+                .sorted(Comparator.comparing(r -> r.getStudent().getId()))
+                .collect(Collectors.toList());
+
+        // Step 2: Filter results - keep only those classrooms where this teacher is assigned
+        List<StudentSubjectResult> filteredResults = allResults.stream()
+                .filter(result -> {
+                    ClassRoomSubjectDetails details = result.getSubjectDetails();
+                    if (details == null || details.getClassroom() == null) {
+                        return false;
+                    }
+
+                    AdmissionClassRoom classroom = details.getClassroom();
+
+                    // Check if teacher is assigned to this classroom
+                    return classroom.getTeachers()
+                            .stream()
+                            .anyMatch(teacher -> teacher.getEmail().equalsIgnoreCase(email));
+                })
+                .collect(Collectors.toList());
+
+        // Step 3: Group filtered results by student
+        Map<AdmissionForm, List<StudentSubjectResult>> resultsByStudent = filteredResults.stream()
+                .collect(Collectors.groupingBy(
+                        StudentSubjectResult::getStudent,
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        List<StudentResultResponse> responseList = new ArrayList<>();
+
+        for (Map.Entry<AdmissionForm, List<StudentSubjectResult>> entry : resultsByStudent.entrySet()) {
+
+            AdmissionForm student = entry.getKey();
+            List<StudentSubjectResult> results = entry.getValue();
+
+            ClassRoomSubjectDetails firstSubjectDetails =
+                    results.isEmpty() ? null : results.get(0).getSubjectDetails();
+
+            AdmissionClassRoom classroom =
+                    firstSubjectDetails != null ? firstSubjectDetails.getClassroom() : null;
+
+            List<SubjectResultDto> subjectResults = results.stream()
+                    .map(r -> SubjectResultDto.builder()
+                            .id(r.getId())
+                            .subjectName(r.getSubjectDetails().getSubject().getSubjectName())
+                            .examType(r.getExamType().getExamType())
+                            .paperType(r.getPaperType().getPaperType())
+                            .obtainedMarks(r.getObtainedMarks())
+                            .totalMarks(r.getSubjectDetails().getTotalMarks())
+                            .passingMarks(r.getSubjectDetails().getPassingMarks())
+                            .topicName(r.getSubjectDetails().getTopicName())
+                            .build())
+                    .collect(Collectors.toList());
+
+            int totalObtained = results.stream()
+                    .mapToInt(r -> r.getObtainedMarks() != 0 ? r.getObtainedMarks() : 0)
+                    .sum();
+
+            int totalSubjectMarks = results.stream()
+                    .mapToInt(r -> r.getSubjectDetails() != null
+                            ? r.getSubjectDetails().getTotalMarks()
+                            : 0)
+                    .sum();
+
+            StudentResultResponse studentResult = StudentResultResponse.builder()
+                    .studentId(student.getId())
+                    .studentName(student.getName())
+                    .email(student.getEmail())
+                    .academicYear(classroom != null ? classroom.getAcademicYear() : null)
+                    .mediumName(student.getMediumName())
+                    .coursename(student.getCoursename())
+                    .rollno(student.getRollNo())
+                    .batchName(classroom != null ? classroom.getBatchName() : null)
+                    .totalObtainedMarks(totalObtained)
+                    .totalSubjectMarks(totalSubjectMarks)
+                    .percentage(totalSubjectMarks > 0
+                            ? (totalObtained * 100.0) / totalSubjectMarks
+                            : 0.0)
+                    .status(subjectResults.stream()
+                            .anyMatch(r -> r.getObtainedMarks() < r.getPassingMarks())
+                            ? "Fail"
+                            : "Pass")
+                    .subjectResults(subjectResults)
+                    .resultDate(results.get(0).getResultDate())
+                    .build();
+
+            responseList.add(studentResult);
+        }
+
+        return responseList;
+    }
+
+
 
     @Override
 //    @Cacheable(value = "teacherStudentResults", key = "#email")
-    public Page<StudentResultResponse> getAllStudentResults(
+    public Page<StudentResultResponse> getAllStudentResultsAdminSide(
             String role,
             String email,
             String branchCode,

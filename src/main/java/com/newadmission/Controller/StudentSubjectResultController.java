@@ -70,7 +70,9 @@ public class StudentSubjectResultController {
     return ResponseEntity.ok(response);
 }
 
-    @GetMapping("/getAllStudentResults")
+
+
+    @GetMapping("/getAllStudentResultsAdminSide")
     public ResponseEntity<Page<StudentResultResponse>> getAllStudentResults(
             @RequestParam String role,
             @RequestParam String email,
@@ -79,7 +81,7 @@ public class StudentSubjectResultController {
             @RequestParam(defaultValue = "10") int size,
             @RequestBody(required = false) StudentResultFilterRequest filterRequest)
     {
-        Page<StudentResultResponse> results = service.getAllStudentResults(role, email, branchCode, filterRequest, page, size);
+        Page<StudentResultResponse> results = service.getAllStudentResultsAdminSide(role, email, branchCode, filterRequest, page, size);
         return ResponseEntity.ok(results);
     }
 
@@ -100,4 +102,14 @@ public class StudentSubjectResultController {
         return ResponseEntity.ok(response);
     }
 
+
+    @GetMapping("/getAllStudentResults")
+    public ResponseEntity<List<StudentResultResponse>> getAllStudentResults( @RequestParam String role, @RequestParam String email,
+                                                                             @RequestParam String branchCode)
+    {
+        List<StudentResultResponse> results = service.getAllStudentResults(role, email, branchCode);
+        return ResponseEntity.ok(results);
+    }
+
 }
+
