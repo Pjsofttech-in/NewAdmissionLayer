@@ -72,7 +72,7 @@ public class StudentSubjectResultController {
 
 
 
-    @GetMapping("/getAllStudentResultsAdminSide")
+    @PostMapping("/getAllStudentResultsAdminSide")
     public ResponseEntity<Page<StudentResultResponse>> getAllStudentResults(
             @RequestParam String role,
             @RequestParam String email,
