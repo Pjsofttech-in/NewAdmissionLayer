@@ -1,5 +1,6 @@
 package com.newadmission.Controller;
 
+import com.newadmission.DTO.BranchAddressDTO;
 import com.newadmission.DTO.InstituteLoginResponse;
 import com.newadmission.JWT.LoginRequest;
 import com.newadmission.JWT.LoginResponse;
@@ -61,4 +62,16 @@ public class StaffController
         return ResponseEntity.ok(branchMap);
     }
 
+    @GetMapping("/getBranchAddress")
+    public ResponseEntity<BranchAddressDTO> getBranchAddress(@RequestParam String branchCode) {
+        try {
+            BranchAddressDTO branchDetails = staffLoginService.getBranchAddressDetails(branchCode);
+            return ResponseEntity.ok(branchDetails);
+        } catch (Exception e) {
+            System.err.println("Error fetching branch details: " + e.getMessage());
+            return ResponseEntity
+                    .status(500)
+                    .body(null);
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package com.newadmission.Serviceimpl;
 
+import com.newadmission.DTO.BranchAddressDTO;
 import com.newadmission.DTO.InstituteClientWrapperResponse;
 import com.newadmission.DTO.InstituteLoginResponse;
 import com.newadmission.JWT.LoginRequest;
@@ -176,6 +177,25 @@ public class StaffService
                     .collectList()
                     .block();
         }
+    }
+
+    public BranchAddressDTO getBranchAddressDetails(String branchCode) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/branchAddressDetailsByBranchCode")
+                        .queryParam("branchCode", branchCode)
+                        .build())
+                .retrieve()
+                .onStatus(
+                        status -> status.is4xxClientError() || status.is5xxServerError(),
+                        response -> response.bodyToMono(String.class)
+                                .flatMap(error -> {
+                                    System.err.println("SuperAdmin error: " + error);
+                                    return Mono.error(new RuntimeException("Failed to fetch branch details"));
+                                })
+                )
+                .bodyToMono(BranchAddressDTO.class)
+                .block(); // ✅ convert reactive response to blocking for MVC app
     }
 
 }
