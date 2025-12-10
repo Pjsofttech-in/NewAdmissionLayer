@@ -55,7 +55,7 @@ public class AdmissionSourceByServiceImpl implements AdmissionSourceByService {
             }
         }
         if ("USER".equalsIgnoreCase(role)) {
-            return "POST".equalsIgnoreCase(action);
+            return "POST".equalsIgnoreCase(action) || "GET".equalsIgnoreCase(action);
         }
         if ("BRANCH".equalsIgnoreCase(role)) {
             try {

@@ -35,7 +35,8 @@ public class AdmissionMediumController {
     public ResponseEntity<List<AdmissionMedium>> getAllMediums(@RequestParam String role,
                                                                @RequestParam(required = false) String email,
                                                                @RequestParam(required = false) String branchCode,
-                                                               @RequestHeader(value = "Authorization", required = false) String authHeader) {
+                                                               @RequestHeader(value = "Authorization", required = false) String authHeader)
+    {
         // For USER role, extract branchCode from JWT
         if ("USER".equalsIgnoreCase(role)) {
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
