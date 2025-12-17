@@ -70,7 +70,8 @@ public class AdmissionForm  {
     private String createdByEmail;
     private String role;
     private String branchCode;
-
+    @Transient
+    private String createdByName;
     private String password;
 
 

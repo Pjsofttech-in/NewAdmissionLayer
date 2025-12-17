@@ -2,7 +2,6 @@ package com.newadmission.Serviceimpl;
 
 import com.beust.jcommander.internal.Nullable;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -18,10 +17,7 @@ import com.newadmission.Repository.AdmissionClassRoomRepository;
 import com.newadmission.Repository.AdmissionRepository;
 import com.newadmission.Repository.AdmissionRulesAndRegulationsRepository;
 import com.newadmission.Repository.AdmissionSubjectRepository;
-import com.newadmission.Service.AdmissionService;
-import com.newadmission.Service.EmailService;
-import com.newadmission.Service.GupshupService;
-import com.newadmission.Service.OtpService;
+import com.newadmission.Service.*;
 import com.opencsv.CSVReaderHeaderAware;
 import io.jsonwebtoken.Claims;
 import jakarta.validation.ConstraintViolation;
@@ -30,7 +26,6 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -81,7 +76,8 @@ public class AdmissionServiceImpl implements AdmissionService {
     @Autowired
     private GupshupService gupshupService;
 
-
+    @Autowired
+    private CreatorClient creatorClient;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -499,28 +495,37 @@ public class AdmissionServiceImpl implements AdmissionService {
         page.put("totalPages", (int) Math.ceil((double) totalAdmissions / pageSize));
 
 
-        List<AdmissionForm> admissionsWithDueDate = admissionsPage.getContent().stream()
-                .map(admission -> {
-                    LocalDate dueDate = null;
+        List<AdmissionForm> admissionsWithDueDate =
+                admissionsPage.getContent().stream()
+                        .map(admission -> {
 
-                    if (admission.getInstallments() != null && !admission.getInstallments().isEmpty()) {
-                        List<LocalDate> dueDates = admission.getInstallments().stream()
-                                .filter(inst -> inst.getDueDate() != null)
-                                .filter(inst -> inst.getStatus() == null || !"PAID".equalsIgnoreCase(inst.getStatus()))
-                                .map(Installment::getDueDate)
-                                .sorted()
-                                .toList();
+                            // --------- Compute Due Date ----------
+                            LocalDate dueDate = null;
+                            if (admission.getInstallments() != null && !admission.getInstallments().isEmpty()) {
+                                dueDate = admission.getInstallments().stream()
+                                        .filter(inst -> inst.getDueDate() != null)
+                                        .filter(inst -> inst.getStatus() == null
+                                                || !"PAID".equalsIgnoreCase(inst.getStatus()))
+                                        .map(Installment::getDueDate)
+                                        .min(LocalDate::compareTo)
+                                        .orElse(null);
+                            }
+                            admission.setDueDate(dueDate);
 
-                        if (!dueDates.isEmpty()) {
-                            dueDate = dueDates.get(0); // pick earliest
-                        }
-                    }
+                            // --------- Fetch Created By Name ----------
+                            if (admission.getCreatedByEmail() != null) {
+                                try {
+                                    CreatedByResponseDTO creator =
+                                            creatorClient.getCreatorByEmail(admission.getCreatedByEmail());
+                                    admission.setCreatedByName(creator.getName());
+                                } catch (Exception e) {
+                                    admission.setCreatedByName(null);
+                                }
+                            }
 
-                    // set computed due date
-                    admission.setDueDate(dueDate);
-                    return admission;
-                })
-                .toList();
+                            return admission;
+                        })
+                        .toList();
 
         Map<String, Object> response = new HashMap<>();
         response.put("summary", summary);
