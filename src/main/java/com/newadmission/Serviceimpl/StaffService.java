@@ -1,6 +1,7 @@
 package com.newadmission.Serviceimpl;
 
 import com.newadmission.DTO.BranchAddressDTO;
+import com.newadmission.DTO.CreatedByResponseDTO;
 import com.newadmission.DTO.InstituteClientWrapperResponse;
 import com.newadmission.DTO.InstituteLoginResponse;
 import com.newadmission.JWT.LoginRequest;
@@ -198,4 +199,24 @@ public class StaffService
                 .block(); // ✅ convert reactive response to blocking for MVC app
     }
 
+
+    public Mono<CreatedByResponseDTO> getCreatorByEmail(String email) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/getNameByemail")
+                        .queryParam("email", email)
+                        .build())
+                .retrieve()
+                .onStatus(
+                        status -> status.value() == 404,
+                        response -> Mono.empty()
+                )
+                .bodyToMono(CreatedByResponseDTO.class);
+    }
+
+    public Mono<String> getCreatedByName(String email) {
+        return getCreatorByEmail(email)
+                .map(CreatedByResponseDTO::getName)
+                .defaultIfEmpty("Unknown");
+    }
 }

@@ -77,9 +77,6 @@ public class AdmissionServiceImpl implements AdmissionService {
     private GupshupService gupshupService;
 
     @Autowired
-    private CreatorClient creatorClient;
-
-    @Autowired
     private JwtUtil jwtUtil;
 
     @Autowired
@@ -499,7 +496,6 @@ public class AdmissionServiceImpl implements AdmissionService {
                 admissionsPage.getContent().stream()
                         .map(admission -> {
 
-                            // --------- Compute Due Date ----------
                             LocalDate dueDate = null;
                             if (admission.getInstallments() != null && !admission.getInstallments().isEmpty()) {
                                 dueDate = admission.getInstallments().stream()
@@ -512,11 +508,10 @@ public class AdmissionServiceImpl implements AdmissionService {
                             }
                             admission.setDueDate(dueDate);
 
-                            // --------- Fetch Created By Name ----------
                             if (admission.getCreatedByEmail() != null) {
                                 try {
                                     CreatedByResponseDTO creator =
-                                            creatorClient.getCreatorByEmail(admission.getCreatedByEmail());
+                                            staffLoginService.getCreatorByEmail(admission.getCreatedByEmail()).block();
                                     admission.setCreatedByName(creator.getName());
                                 } catch (Exception e) {
                                     admission.setCreatedByName(null);
@@ -571,7 +566,10 @@ public class AdmissionServiceImpl implements AdmissionService {
                 if (partial.getPaymentMethod() != null) existingAdmissionForm.setPaymentMethod(partial.getPaymentMethod());
                 if (partial.getPendingFees() != null) existingAdmissionForm.setPendingFees(partial.getPendingFees());
                 if (partial.getPaidFees() != null) existingAdmissionForm.setPaidFees(partial.getPaidFees());
-//                if (partial.getGuideName() != null) existingAdmissionForm.setGuideName(partial.getGuideName());
+                if (partial.getQualification() != null) existingAdmissionForm.setQualification(partial.getQualification());
+                if (partial.getCity() != null) existingAdmissionForm.setCity(partial.getCity());
+                if (partial.getState() != null) existingAdmissionForm.setState(partial.getState());
+                if (partial.getPincode() != null) existingAdmissionForm.setPincode(partial.getPincode());
                 if (partial.getSourceBy() != null) existingAdmissionForm.setSourceBy(partial.getSourceBy());
                 if (partial.getPaymentMode() != null) existingAdmissionForm.setPaymentMode(partial.getPaymentMode());
                 if (partial.getCurrentAddress() != null) existingAdmissionForm.setCurrentAddress(partial.getCurrentAddress());

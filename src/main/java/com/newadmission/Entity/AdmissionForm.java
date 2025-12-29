@@ -39,8 +39,10 @@ public class AdmissionForm  {
     private Double totalFees;
     private String remark;
     private String status;
-
-
+    private String qualification;
+    private String city;
+    private Long pincode;
+    private String state;
     private LocalDate dueDate;
 
     private String mediumName;
