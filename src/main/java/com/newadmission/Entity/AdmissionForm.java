@@ -31,7 +31,6 @@ public class AdmissionForm  {
     private String coursename;
     private String duration;
     @Email(message = "Email should be valid")
-    @Column(unique = true)
     private String email;
     @Pattern(regexp = "^$|^[0-9]{10}$", message = "Mobile number must be 10 digits")
     private String mobile2;

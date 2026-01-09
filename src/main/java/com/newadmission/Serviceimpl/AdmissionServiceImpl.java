@@ -1447,15 +1447,16 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
                 .findByAdmissionClassRoom_IdAndRollNoAndBranchCode(classroomId, rollNo, branchCode)
                 .orElseThrow(() -> new RuntimeException("Admission not found for given parameters."));
     }
-
     @Override
     public List<String> uploadAdmissionsFromCsv(MultipartFile file, String role, String email) {
+
         if (!hasPermission(role, email, "POST")) {
             throw new AccessDeniedException("No permission to upload AdmissionForm CSV");
         }
 
         List<AdmissionForm> admissionList = new ArrayList<>();
         List<String> errorMessages = new ArrayList<>();
+
         String branchCode = fetchBranchCodeByRole(role, email);
         int nextRegCounter = getNextRegistrationCounter();
         int nextRollNo = getNextRollNumber();
@@ -1471,22 +1472,32 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
             int rowNumber = 1;
 
             while ((values = csvReader.readMap()) != null) {
+
+                // ✅ Skip empty rows
+                if (isEmptyRow(values)) {
+                    rowNumber++;
+                    continue;
+                }
+
                 AdmissionForm form = AdmissionForm.builder()
                         .name(values.get("Name"))
                         .mobile1(values.get("Mobile1"))
-                        .date(safeParseDate(values.get("Date")) != null ? safeParseDate(values.get("Date")) : LocalDate.now())
+                        .date(safeParseDate(values.get("Date")))
                         .status(values.getOrDefault("Status", "Active"))
                         .coursename(values.get("Course"))
                         .duration(values.get("Duration"))
                         .email(values.get("Email"))
                         .mobile2(values.get("Mobile2"))
-                        .totalFees(parseDouble(values.get("TotalFees")))
+
+                        // ✅ Correct CSV headers
+                        .totalFees(parseDouble(values.get("Total Fees")))
+                        .paidFees(parseDouble(values.get("Paid Fees")))
+                        .dueDate(safeParseDate(values.get("Due Date")))
+                        .paymentMode(values.get("Mode"))
+
                         .remark(values.get("Remark"))
-                        .dueDate(safeParseDate(values.get("DueDate")))
                         .mediumName(values.get("Medium"))
-                        .paymentMethod(values.get("PaymentMethod"))
-                        .paymentMode(values.get("PaymentMode"))
-                        .paidFees(parseDouble(values.get("PaidFees")))
+                        .paymentMethod(values.get("Payment Method"))
                         .sourceBy(values.get("SourceBy"))
                         .currentAddress(values.get("CurrentAddress"))
                         .permanentAddress(values.get("PermanentAddress"))
@@ -1495,6 +1506,7 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
                         .dob(safeParseDate(values.get("DOB")))
                         .reference(values.get("Reference"))
                         .aadhaarCardNo(values.get("AadhaarCardNo"))
+
                         .createdByEmail(email)
                         .role(role)
                         .branchCode(branchCode)
@@ -1502,26 +1514,36 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
                         .rollNo(nextRollNo++)
                         .build();
 
-                // Encode password
+                // ✅ Password handling (unchanged)
                 String rawPassword = values.get("Password");
                 form.setPassword(rawPassword != null && !rawPassword.trim().isEmpty()
                         ? passwordEncoder.encode(rawPassword.trim())
                         : null);
 
-                // Expiredate + pending fees
-                calculateExpireDate(form);
+                // ✅ Expire date from CSV End Date (priority)
+                LocalDate endDate = safeParseDate(values.get("End Date"));
+                if (endDate != null) {
+                    form.setExpiredate(endDate);
+                } else {
+                    calculateExpireDate(form); // fallback (base logic)
+                }
+
+                // ✅ Pending fees calculation
                 double total = form.getTotalFees() != null ? form.getTotalFees() : 0.0;
                 double paid = form.getPaidFees() != null ? form.getPaidFees() : 0.0;
                 form.setPendingFees(total - paid);
 
-                // ✅ Validate before adding
+                // ✅ Validation
                 Set<ConstraintViolation<AdmissionForm>> violations = validator.validate(form);
                 if (!violations.isEmpty()) {
                     StringBuilder errorMsg = new StringBuilder();
                     for (ConstraintViolation<AdmissionForm> v : violations) {
-                        errorMsg.append(v.getPropertyPath()).append(" ").append(v.getMessage()).append("; ");
+                        errorMsg.append(v.getPropertyPath())
+                                .append(" ")
+                                .append(v.getMessage())
+                                .append("; ");
                     }
-                    errorMessages.add("Row " + rowNumber + ": " + errorMsg.toString());
+                    errorMessages.add("Row " + rowNumber + ": " + errorMsg);
                 }
 
                 admissionList.add(form);
@@ -1532,7 +1554,6 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
                 return errorMessages;
             }
 
-            // Otherwise save all rows
             admissionRepository.saveAll(admissionList);
             return List.of("CSV uploaded successfully with " + admissionList.size() + " records.");
 
@@ -1541,6 +1562,11 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
         }
     }
 
+
+    private boolean isEmptyRow(Map<String, String> values) {
+        return values.values().stream()
+                .allMatch(v -> v == null || v.trim().isEmpty());
+    }
 
     private void calculateExpireDate(AdmissionForm form) {
         if (form.getDate() == null || form.getDuration() == null) {
@@ -1574,7 +1600,8 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
                 DateTimeFormatter.ofPattern("yyyy-MM-dd"),
                 DateTimeFormatter.ofPattern("yyyy/MM/dd"),
                 DateTimeFormatter.ofPattern("dd-MM-yyyy"),
-                DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+                DateTimeFormatter.ofPattern("dd.MM.yyyy") // ✅ REQUIRED
         );
 
         for (DateTimeFormatter formatter : formatters) {
@@ -1582,10 +1609,9 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
                 return LocalDate.parse(trimmed, formatter);
             } catch (Exception ignored) {}
         }
-
-        System.out.println("Unrecognized date format: " + trimmed);
         return null;
     }
+
 
     private Double parseDouble(String value) {
         try {
