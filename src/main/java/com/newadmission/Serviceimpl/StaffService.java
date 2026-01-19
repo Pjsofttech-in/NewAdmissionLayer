@@ -1,9 +1,6 @@
 package com.newadmission.Serviceimpl;
 
-import com.newadmission.DTO.BranchAddressDTO;
-import com.newadmission.DTO.CreatedByResponseDTO;
-import com.newadmission.DTO.InstituteClientWrapperResponse;
-import com.newadmission.DTO.InstituteLoginResponse;
+import com.newadmission.DTO.*;
 import com.newadmission.JWT.LoginRequest;
 import com.newadmission.JWT.LoginResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -62,6 +59,71 @@ public class StaffService
                 .header(HttpHeaders.AUTHORIZATION, token)  // pass it as-is
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Boolean>>() {})
+                .block();
+    }
+
+    public boolean hasPermission(String role, String email, String action) {
+        if ("USER".equalsIgnoreCase(role)) {
+            return "GET".equalsIgnoreCase(action);
+        }
+        if ("BRANCH".equalsIgnoreCase(role)) {
+            try {
+                Boolean exists = webClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/existBranchbyemail")
+                                .queryParam("email", email)
+                                .build())
+                        .retrieve()
+                        .bodyToMono(Boolean.class)
+                        .block();
+
+                return Boolean.TRUE.equals(exists);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+
+        return switch (role.toUpperCase()) {
+            case "STAFF" -> {
+                Map<String, Boolean> perms = getPermissionsByEmail(email);
+                yield switch (action.toUpperCase()) {
+                    case "GET" -> Boolean.TRUE.equals(perms.get("cansGet"));
+                    case "POST" -> Boolean.TRUE.equals(perms.get("cansPost"));
+                    case "PUT" -> Boolean.TRUE.equals(perms.get("cansPut"));
+                    case "DELETE" -> Boolean.TRUE.equals(perms.get("cansDelete"));
+                    default -> false;
+                };
+            }
+            case "DEPARTMENT" -> {
+                Map<String, Object> perms = getCrudPermissionForDepartmentByEmail(email);
+                yield switch (action.toUpperCase()) {
+                    case "GET" -> Boolean.TRUE.equals(perms.get("candGet"));
+                    case "POST" -> Boolean.TRUE.equals(perms.get("candPost"));
+                    case "PUT" -> Boolean.TRUE.equals(perms.get("candPut"));
+                    case "DELETE" -> Boolean.TRUE.equals(perms.get("candDelete"));
+                    default -> false;
+                };
+            }
+            default -> false;
+        };
+    }
+
+    public String fetchBranchCodeByRole(String role, String email) {
+        String endpoint = switch (role.toLowerCase()) {
+            case "branch" -> "/branch/getbranchcode";
+            case "department" -> "/department/getbranchcode";
+            case "staff" -> "/staff/getbranchcode";
+            default -> throw new IllegalArgumentException("Invalid role: " + role);
+        };
+
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path(endpoint)
+                        .queryParam("email", email)
+                        .build())
+                .retrieve()
+                .bodyToMono(String.class)
                 .block();
     }
 
@@ -218,5 +280,29 @@ public class StaffService
         return getCreatorByEmail(email)
                 .map(CreatedByResponseDTO::getName)
                 .defaultIfEmpty("Unknown");
+    }
+
+
+    public Mono<Map<String, Object>> createOrder(String branchCode, String systemName, Long amount)
+    {
+
+        return webClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/createOrder")
+                        .queryParam("branchCode", branchCode)
+                        .queryParam("systemName", systemName)
+                        .queryParam("amount", amount)
+                        .build())
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<>() {});
+    }
+
+    public Mono<Boolean> verifyPayment(RazorpayVerifyRequest request) {
+
+        return webClient.post()
+                .uri("/verifyPayment")
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(Boolean.class);
     }
 }
