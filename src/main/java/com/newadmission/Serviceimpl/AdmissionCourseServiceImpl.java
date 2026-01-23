@@ -22,9 +22,6 @@ public class AdmissionCourseServiceImpl implements AdmissionCourseService {
     private final WebClient webClient;
     private final StaffService staffService;
 
-    @Value("${client.superadmin.base-url}")
-    private String superAdminBaseUrl;
-
     @Autowired
     public AdmissionCourseServiceImpl(AdmissionCourseRepository repository,
                                       WebClient webClient,
@@ -34,96 +31,15 @@ public class AdmissionCourseServiceImpl implements AdmissionCourseService {
         this.staffService = staffService;
     }
 
-    private boolean hasPermission(String role, String email, String action) {
-
-        if ("SUPERADMIN".equalsIgnoreCase(role) && "GET".equalsIgnoreCase(action)) {
-            try {
-                Boolean exists = webClient.get()
-                        .uri(uriBuilder -> uriBuilder
-                                .path("/checkClientEmailExist")
-                                .queryParam("email", email)
-                                .build())
-                        .retrieve()
-                        .bodyToMono(Boolean.class)
-                        .block();
-                return Boolean.TRUE.equals(exists);
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-        if ("USER".equalsIgnoreCase(role)) {
-            return "POST".equalsIgnoreCase(action) || "GET".equalsIgnoreCase(action);
-        }
-        if ("BRANCH".equalsIgnoreCase(role)) {
-            try {
-                Boolean exists = webClient.get()
-                        .uri(uriBuilder -> uriBuilder
-                                .path("/existBranchbyemail")
-                                .queryParam("email", email)
-                                .build())
-                        .retrieve()
-                        .bodyToMono(Boolean.class)
-                        .block();
-
-                return Boolean.TRUE.equals(exists);
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-
-        return switch (role.toUpperCase()) {
-            case "STAFF" -> {
-                Map<String, Boolean> perms = staffService.getPermissionsByEmail(email);
-                yield switch (action.toUpperCase()) {
-                    case "GET" -> Boolean.TRUE.equals(perms.get("cansGet"));
-                    case "POST" -> Boolean.TRUE.equals(perms.get("cansPost"));
-                    case "PUT" -> Boolean.TRUE.equals(perms.get("cansPut"));
-                    case "DELETE" -> Boolean.TRUE.equals(perms.get("cansDelete"));
-                    default -> false;
-                };
-            }
-            case "DEPARTMENT" -> {
-                Map<String, Object> perms = staffService.getCrudPermissionForDepartmentByEmail(email);
-                yield switch (action.toUpperCase()) {
-                    case "GET" -> Boolean.TRUE.equals(perms.get("candGet"));
-                    case "POST" -> Boolean.TRUE.equals(perms.get("candPost"));
-                    case "PUT" -> Boolean.TRUE.equals(perms.get("candPut"));
-                    case "DELETE" -> Boolean.TRUE.equals(perms.get("candDelete"));
-                    default -> false;
-                };
-            }
-            default -> false;
-        };
-    }
-
-    private String fetchBranchCodeByRole(String role, String email) {
-        String endpoint = switch (role.toLowerCase()) {
-            case "branch" -> "/branch/getbranchcode";
-            case "department" -> "/department/getbranchcode";
-            case "staff" -> "/staff/getbranchcode";
-            default -> throw new IllegalArgumentException("Invalid role: " + role);
-        };
-
-        return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path(endpoint)
-                        .queryParam("email", email)
-                        .build())
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
-    }
-
+  
     @Override
 //    @CacheEvict(value = {"allCourses", "courseById"}, allEntries = true)
     public AdmissionCourse createCourse(AdmissionCourse course, String role, String email) {
-        if (!hasPermission(role, email, "POST")) {
+        if (!staffService.hasPermission(role, email, "POST")) {
             throw new AccessDeniedException("No permission to create course");
         }
 
-        String branchCode = fetchBranchCodeByRole(role, email);
+        String branchCode = staffService.fetchBranchCodeByRole(role, email);
         course.setRole(role);
         course.setCreatedByEmail(email);
         course.setBranchCode(branchCode);
@@ -133,7 +49,7 @@ public class AdmissionCourseServiceImpl implements AdmissionCourseService {
     @Override
 //    @Cacheable(value = "allCourses", key = "#branchCode + '-' + #role + '-' + #email", unless = "#result == null || #result.isEmpty()")
     public List<AdmissionCourse> getAllCourses(String role, String email, String branchCode) {
-        if (!hasPermission(role, email, "GET")) {
+        if (!staffService.hasPermission(role, email, "GET")) {
             throw new AccessDeniedException("No permission to view courses");
         }
 
@@ -161,7 +77,7 @@ public class AdmissionCourseServiceImpl implements AdmissionCourseService {
     @Override
 //    @CacheEvict(value = {"allCourses", "courseById"}, allEntries = true)
     public AdmissionCourse updateCourse(Long id, AdmissionCourse course, String role, String email) {
-        if (!hasPermission(role, email, "PUT")) {
+        if (!staffService.hasPermission(role, email, "PUT")) {
             throw new AccessDeniedException("No permission to update course");
         }
 
@@ -175,7 +91,7 @@ public class AdmissionCourseServiceImpl implements AdmissionCourseService {
     @Override
 //    @CacheEvict(value = {"allCourses", "courseById"}, allEntries = true)
     public void deleteCourse(Long id, String role, String email) {
-        if (!hasPermission(role, email, "DELETE")) {
+        if (!staffService.hasPermission(role, email, "DELETE")) {
             throw new AccessDeniedException("No permission to delete course");
         }
 
@@ -188,7 +104,7 @@ public class AdmissionCourseServiceImpl implements AdmissionCourseService {
     @Override
 //    @Cacheable(value = "courseById", key = "#id + '-' + #role + '-' + #email", unless = "#result == null")
     public AdmissionCourse getCourseById(Long id, String role, String email) {
-        if (!hasPermission(role, email, "GET")) {
+        if (!staffService.hasPermission(role, email, "GET")) {
             throw new AccessDeniedException("No permission to view course");
         }
 

@@ -14,7 +14,7 @@ public interface StudentSubjectResultService {
     StudentSubjectResult getById(Long id, String role, String email);
     StudentSubjectResult update(Long id, StudentSubjectResult result, String role, String email);
     void delete(Long id, String role, String email);
-    public List<StudentSubjectResult> getByStudentId(Long studentId, String role, String email);
+     List<StudentSubjectResult> getByStudentId(Long studentId, String role, String email);
     StudentResultResponse getStudentResultsByStudentId(Long studentId, String role, String email);
     List<StudentResultResponse> getAllStudentResults(String role, String email, String branchCode);
     Page<StudentResultResponse> getAllStudentResultsAdminSide(String role, String email, String branchCode,

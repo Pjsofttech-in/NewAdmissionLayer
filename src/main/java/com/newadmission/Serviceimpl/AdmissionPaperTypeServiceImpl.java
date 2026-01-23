@@ -22,10 +22,7 @@ public class AdmissionPaperTypeServiceImpl implements AdmissionPaperTypeService 
     private final WebClient webClient;
     private final StaffService staffService;
     private final AdmissionTeacherRepository admissionTeacherRepository;
-
-
-    @Value("${client.superadmin.base-url}")
-    private String superAdminBaseUrl;
+    
 
     @Autowired
     public AdmissionPaperTypeServiceImpl(AdmissionPaperTypeRepository repository,
@@ -37,75 +34,13 @@ public class AdmissionPaperTypeServiceImpl implements AdmissionPaperTypeService 
         this.staffService = staffService;
         this.admissionTeacherRepository = admissionTeacherRepository;
     }
-
-    private boolean hasPermission(String role, String email, String action) {
-        if ("BRANCH".equalsIgnoreCase(role)) {
-            try {
-                Boolean exists = webClient.get()
-                        .uri(uriBuilder -> uriBuilder
-                                .path("/existBranchbyemail")
-                                .queryParam("email", email)
-                                .build())
-                        .retrieve()
-                        .bodyToMono(Boolean.class)
-                        .block();
-
-                return Boolean.TRUE.equals(exists);
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-
-        return switch (role.toUpperCase()) {
-            case "STAFF" -> {
-                Map<String, Boolean> perms = staffService.getPermissionsByEmail(email);
-                yield switch (action.toUpperCase()) {
-                    case "GET" -> Boolean.TRUE.equals(perms.get("cansGet"));
-                    case "POST" -> Boolean.TRUE.equals(perms.get("cansPost"));
-                    case "PUT" -> Boolean.TRUE.equals(perms.get("cansPut"));
-                    case "DELETE" -> Boolean.TRUE.equals(perms.get("cansDelete"));
-                    default -> false;
-                };
-            }
-            case "DEPARTMENT" -> {
-                Map<String, Object> perms = staffService.getCrudPermissionForDepartmentByEmail(email);
-                yield switch (action.toUpperCase()) {
-                    case "GET" -> Boolean.TRUE.equals(perms.get("candGet"));
-                    case "POST" -> Boolean.TRUE.equals(perms.get("candPost"));
-                    case "PUT" -> Boolean.TRUE.equals(perms.get("candPut"));
-                    case "DELETE" -> Boolean.TRUE.equals(perms.get("candDelete"));
-                    default -> false;
-                };
-            }
-            default -> false;
-        };
-    }
-
-    private String fetchBranchCodeByRole(String role, String email) {
-        String endpoint = switch (role.toLowerCase()) {
-            case "branch" -> "/branch/getbranchcode";
-            case "department" -> "/department/getbranchcode";
-            case "staff" -> "/staff/getbranchcode";
-            default -> throw new IllegalArgumentException("Invalid role: " + role);
-        };
-
-        return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path(endpoint)
-                        .queryParam("email", email)
-                        .build())
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
-    }
-
+    
     @Override
     public AdmissionPaperType createPaperType(AdmissionPaperType paperType, String role, String email) {
-        if (!hasPermission(role, email, "POST"))
+        if (!staffService.hasPermission(role, email, "POST"))
             throw new AccessDeniedException("No permission to create PaperType");
 
-        String branchCode = fetchBranchCodeByRole(role, email);
+        String branchCode = staffService.fetchBranchCodeByRole(role, email);
         paperType.setRole(role);
         paperType.setCreatedByEmail(email);
         paperType.setBranchCode(branchCode);
@@ -115,7 +50,7 @@ public class AdmissionPaperTypeServiceImpl implements AdmissionPaperTypeService 
 
     @Override
     public List<AdmissionPaperType> getAll(String role, String email, String branchCode) {
-        if (!hasPermission(role, email, "GET"))
+        if (!staffService.hasPermission(role, email, "GET"))
             throw new AccessDeniedException("No permission to view paper types");
 
         return repository.findAllByBranchCode(branchCode);
@@ -123,7 +58,7 @@ public class AdmissionPaperTypeServiceImpl implements AdmissionPaperTypeService 
 
     @Override
     public AdmissionPaperType getById(Long id, String role, String email) {
-        if (!hasPermission(role, email, "GET"))
+        if (!staffService.hasPermission(role, email, "GET"))
             throw new AccessDeniedException("No permission to view this paper type");
 
         return repository.findById(id)
@@ -132,7 +67,7 @@ public class AdmissionPaperTypeServiceImpl implements AdmissionPaperTypeService 
 
     @Override
     public AdmissionPaperType update(Long id, AdmissionPaperType paperType, String role, String email) {
-        if (!hasPermission(role, email, "PUT"))
+        if (!staffService.hasPermission(role, email, "PUT"))
             throw new AccessDeniedException("No permission to update PaperType");
 
         AdmissionPaperType existing = repository.findById(id)
@@ -144,7 +79,7 @@ public class AdmissionPaperTypeServiceImpl implements AdmissionPaperTypeService 
 
     @Override
     public void delete(Long id, String role, String email) {
-        if (!hasPermission(role, email, "DELETE"))
+        if (!staffService.hasPermission(role, email, "DELETE"))
             throw new AccessDeniedException("No permission to delete PaperType");
 
         repository.findById(id)

@@ -1,6 +1,7 @@
 package com.newadmission.Serviceimpl;
 
 import com.newadmission.DTO.*;
+import com.newadmission.JWT.InternalJwtProvider;
 import com.newadmission.JWT.LoginRequest;
 import com.newadmission.JWT.LoginResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,9 @@ import java.util.stream.Collectors;
 public class StaffService
 {
     private final WebClient webClient;
+
+    @Autowired
+    InternalJwtProvider internalJwtProvider;
 
     @Autowired
     public StaffService(WebClient webClient) {
@@ -283,8 +287,11 @@ public class StaffService
     }
 
 
-    public Mono<Map<String, Object>> createOrder(String branchCode, String systemName, Long amount)
-    {
+    public Map<String, Object> createOrder(String branchCode,
+                                           String systemName,
+                                           Long amount) {
+
+        String internalToken = internalJwtProvider.generateInternalToken();
 
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder
@@ -293,14 +300,19 @@ public class StaffService
                         .queryParam("systemName", systemName)
                         .queryParam("amount", amount)
                         .build())
+                .header("Authorization", "Bearer " + internalToken)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<>() {});
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .block();
     }
 
     public Mono<Boolean> verifyPayment(RazorpayVerifyRequest request) {
 
+        String internalToken = internalJwtProvider.generateInternalToken();
+
         return webClient.post()
                 .uri("/verifyPayment")
+                .header("Authorization", "Bearer " + internalToken)
                 .bodyValue(request)
                 .retrieve()
                 .bodyToMono(Boolean.class);

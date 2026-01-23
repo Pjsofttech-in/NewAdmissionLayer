@@ -19,9 +19,6 @@ public class AdmissionConductByServiceImpl implements AdmissionConductByService 
     private final WebClient webClient;
     private final StaffService staffService;
 
-    @Value("${client.superadmin.base-url}")
-    private String superAdminBaseUrl;
-
     @Autowired
     public AdmissionConductByServiceImpl(AdmissionConductByRepository repository,
                                          WebClient webClient,
@@ -31,78 +28,13 @@ public class AdmissionConductByServiceImpl implements AdmissionConductByService 
         this.staffService = staffService;
     }
 
-    private boolean hasPermission(String role, String email, String action) {
-        if ("USER".equalsIgnoreCase(role)) {
-            return "GET".equalsIgnoreCase(action);
-        }
-        if ("BRANCH".equalsIgnoreCase(role)) {
-            try {
-                Boolean exists = webClient.get()
-                        .uri(uriBuilder -> uriBuilder
-                                .path("/existBranchbyemail")
-                                .queryParam("email", email)
-                                .build())
-                        .retrieve()
-                        .bodyToMono(Boolean.class)
-                        .block();
-
-                return Boolean.TRUE.equals(exists);
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-
-        return switch (role.toUpperCase()) {
-            case "STAFF" -> {
-                Map<String, Boolean> perms = staffService.getPermissionsByEmail(email);
-                yield switch (action.toUpperCase()) {
-                    case "GET" -> Boolean.TRUE.equals(perms.get("cansGet"));
-                    case "POST" -> Boolean.TRUE.equals(perms.get("cansPost"));
-                    case "PUT" -> Boolean.TRUE.equals(perms.get("cansPut"));
-                    case "DELETE" -> Boolean.TRUE.equals(perms.get("cansDelete"));
-                    default -> false;
-                };
-            }
-            case "DEPARTMENT" -> {
-                Map<String, Object> perms = staffService.getCrudPermissionForDepartmentByEmail(email);
-                yield switch (action.toUpperCase()) {
-                    case "GET" -> Boolean.TRUE.equals(perms.get("candGet"));
-                    case "POST" -> Boolean.TRUE.equals(perms.get("candPost"));
-                    case "PUT" -> Boolean.TRUE.equals(perms.get("candPut"));
-                    case "DELETE" -> Boolean.TRUE.equals(perms.get("candDelete"));
-                    default -> false;
-                };
-            }
-            default -> false;
-        };
-    }
-
-    private String fetchBranchCodeByRole(String role, String email) {
-        String endpoint = switch (role.toLowerCase()) {
-            case "branch" -> "/branch/getbranchcode";
-            case "department" -> "/department/getbranchcode";
-            case "staff" -> "/staff/getbranchcode";
-            default -> throw new IllegalArgumentException("Invalid role: " + role);
-        };
-
-        return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path(endpoint)
-                        .queryParam("email", email)
-                        .build())
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
-    }
-
     @Override
     public AdmissionConductBy createConductBy(AdmissionConductBy conductBy, String role, String email) {
-        if (!hasPermission(role, email, "POST")) {
+        if (!staffService.hasPermission(role, email, "POST")) {
             throw new AccessDeniedException("No permission to create ConductBy");
         }
 
-        String branchCode = fetchBranchCodeByRole(role, email);
+        String branchCode = staffService.fetchBranchCodeByRole(role, email);
         conductBy.setRole(role);
         conductBy.setCreatedByEmail(email);
         conductBy.setBranchCode(branchCode);
@@ -111,7 +43,7 @@ public class AdmissionConductByServiceImpl implements AdmissionConductByService 
 
     @Override
     public List<AdmissionConductBy> getAllConductBy(String role, String email, String branchCode) {
-        if (!hasPermission(role, email, "GET")) {
+        if (!staffService.hasPermission(role, email, "GET")) {
             throw new AccessDeniedException("No permission to view ConductBy list");
         }
 
@@ -120,7 +52,7 @@ public class AdmissionConductByServiceImpl implements AdmissionConductByService 
 
     @Override
     public AdmissionConductBy updateConductBy(Long id, AdmissionConductBy conductBy, String role, String email) {
-        if (!hasPermission(role, email, "PUT")) {
+        if (!staffService.hasPermission(role, email, "PUT")) {
             throw new AccessDeniedException("No permission to update ConductBy");
         }
 
@@ -133,7 +65,7 @@ public class AdmissionConductByServiceImpl implements AdmissionConductByService 
 
     @Override
     public void deleteConductBy(Long id, String role, String email) {
-        if (!hasPermission(role, email, "DELETE")) {
+        if (!staffService.hasPermission(role, email, "DELETE")) {
             throw new AccessDeniedException("No permission to delete ConductBy");
         }
 
@@ -145,7 +77,7 @@ public class AdmissionConductByServiceImpl implements AdmissionConductByService 
 
     @Override
     public AdmissionConductBy getConductById(Long id, String role, String email) {
-        if (!hasPermission(role, email, "GET")) {
+        if (!staffService.hasPermission(role, email, "GET")) {
             throw new AccessDeniedException("No permission to view ConductBy");
         }
 

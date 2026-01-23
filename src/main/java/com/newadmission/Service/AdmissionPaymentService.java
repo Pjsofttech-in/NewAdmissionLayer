@@ -7,6 +7,6 @@ import java.util.Map;
 
 public interface AdmissionPaymentService
 {
-    Mono<Map<String, Object>> createOrder(Long admissionId, Long amount, String role, String email);
+    Map<String, Object> createOrder(Long admissionId, Long amount, String role, String email);
     Mono<Boolean> verifyPayment(RazorpayVerifyRequest request, String role, String email);
 }

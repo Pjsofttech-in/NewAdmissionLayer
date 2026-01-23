@@ -588,8 +588,6 @@ public class AdmissionServiceImpl implements AdmissionService {
                 if (partial.getPaymentImage() != null) existingAdmissionForm.setPaymentImage(partial.getPaymentImage());
 
 
-
-
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Invalid admission data", e);
             }

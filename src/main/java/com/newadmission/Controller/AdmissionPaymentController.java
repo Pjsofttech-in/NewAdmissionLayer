@@ -4,6 +4,7 @@ import com.newadmission.DTO.RazorpayVerifyRequest;
 import com.newadmission.Service.AdmissionPaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -19,11 +20,19 @@ public class AdmissionPaymentController
     AdmissionPaymentService paymentService;
 
     @PostMapping("/createAdmissionOrder")
-    public Mono<Map<String, Object>> createOrder(@RequestParam Long admissionId,@RequestParam String role,
-                                                 @RequestParam String email, @RequestParam Long amount) {
+    public ResponseEntity<Map<String, Object>> createOrder(
+            @RequestParam Long admissionId,
+            @RequestParam String role,
+            @RequestParam String email,
+            @RequestParam Long amount) {
 
-        return paymentService.createOrder(admissionId, amount,role,email);
+        Map<String, Object> response =
+                paymentService.createOrder(admissionId, amount, role, email);
+
+        return ResponseEntity.ok(response);
     }
+
+
 
     @PostMapping("/verifyAdmissionPayment")
     public Mono<ResponseEntity<String>> verify(@RequestParam String role,
