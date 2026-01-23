@@ -112,26 +112,36 @@ public class HomeworkService {
     }
 
     public List<HomeworkResponse> getHomeworkForStudent(String studentEmail) {
+
         AdmissionForm student = studentRepo.findByEmail(studentEmail)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        List<AdmissionHomework> homeworks = homeworkRepo.findByClassroom(student.getAdmissionClassRoom());
+        List<AdmissionHomework> homeworks =
+                homeworkRepo.findByClassroom(student.getAdmissionClassRoom());
 
+        return homeworks.stream().map(hw -> {
 
-        return homeworks.stream().map(hw -> HomeworkResponse.builder()
-                .id(hw.getId())
-                .homework(hw.getHomework())
-                .subjectName(hw.getSubjectName())
-                .imageUrl(hw.getImageUrl())
-                .startDate(hw.getStartDate())
-                .endDate(hw.getEndDate())
-                .teacherName(hw.getGivenByTeacher().getTeacherName())
-                .teacherEmail(hw.getGivenByTeacher().getEmail())
-                .branchCode(hw.getGivenByTeacher().getBranchCode())
+            String status = hw.getSubmissions().stream()
+                    .filter(sub -> sub.getStudent().getId().equals(student.getId()))
+                    .map(AdmissionHomeworkSubmission::getStatus)
+                    .findFirst()
+                    .orElse("PENDING"); // default if not submitted
 
-                .build()
-        ).toList();
+            return HomeworkResponse.builder()
+                    .id(hw.getId())
+                    .homework(hw.getHomework())
+                    .subjectName(hw.getSubjectName())
+                    .imageUrl(hw.getImageUrl())
+                    .startDate(hw.getStartDate())
+                    .endDate(hw.getEndDate())
+                    .status(status) // ✅ status added
+                    .teacherName(hw.getGivenByTeacher().getTeacherName())
+                    .teacherEmail(hw.getGivenByTeacher().getEmail())
+                    .branchCode(hw.getGivenByTeacher().getBranchCode())
+                    .build();
+        }).toList();
     }
+
 
     public List<HomeworkSubmissionResponse> getSubmissionsForHomework(Long homeworkId, String teacherEmail) {
         AdmissionHomework homework = homeworkRepo.findById(homeworkId)
