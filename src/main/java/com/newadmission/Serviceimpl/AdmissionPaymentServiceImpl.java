@@ -67,8 +67,13 @@ public class AdmissionPaymentServiceImpl implements AdmissionPaymentService
         request.setSystemName(SYSTEM);
 
         AdmissionPaymentTransaction tx = transactionRepository
-                .findByRazorpayOrderId(request.getRazorpayOrderId())
-                .orElseThrow(() -> new RuntimeException("Transaction not found"));
+                .findByRazorpayOrderIdAndSystemName(
+                        request.getRazorpayOrderId(),
+                        SYSTEM
+                )
+                .orElseThrow(() -> new RuntimeException(
+                        "Transaction not found for orderId=" + request.getRazorpayOrderId()
+                ));
 
         boolean isValid = staffService.verifyPayment(request).block(); // OK here
 

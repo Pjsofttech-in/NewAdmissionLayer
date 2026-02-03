@@ -12,6 +12,7 @@ import java.util.Optional;
 public interface AdmissionPaymentTransactionRepository extends JpaRepository<AdmissionPaymentTransaction,Long>
 {
 
-    @Query("SELECT t FROM AdmissionPaymentTransaction t WHERE t.razorpayOrderId = :orderId")
-    Optional<AdmissionPaymentTransaction> findByRazorpayOrderId(@Param("orderId") String orderId);
+
+    Optional<AdmissionPaymentTransaction> findByRazorpayOrderIdAndSystemName(String razorpayOrderId, String systemName);
+
 }

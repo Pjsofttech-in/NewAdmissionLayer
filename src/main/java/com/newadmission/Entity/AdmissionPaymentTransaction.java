@@ -22,10 +22,12 @@ public class AdmissionPaymentTransaction
 
     private Long admissionId;
 
-    @Column(unique = true)
+    @Column(unique = true,length = 50)
     private String razorpayOrderId;
 
     private String razorpayPaymentId;
+
+    @Column(length = 255)
     private String razorpaySignature;
 
     private Long amount;
