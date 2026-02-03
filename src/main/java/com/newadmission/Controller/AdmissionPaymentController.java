@@ -35,19 +35,19 @@ public class AdmissionPaymentController
 
 
     @PostMapping("/verifyAdmissionPayment")
-    public Mono<ResponseEntity<String>> verify(@RequestParam String role,
-                                               @RequestParam String email,
-                                               @RequestBody RazorpayVerifyRequest request)
-    {
+    public ResponseEntity<String> verify(
+            @RequestParam String role,
+            @RequestParam String email,
+            @RequestBody RazorpayVerifyRequest request) {
+
         request.setSystemName("Admission Management Software");
-        return paymentService.verifyPayment(request, role, email)
-                .map(success -> {
-                    if (success) {
-                        return ResponseEntity.ok("Admission payment success");
-                    }
-                    return ResponseEntity
-                            .badRequest()
-                            .body("Payment verification failed");
-                });
+
+        boolean success = paymentService.verifyPayment(request, role, email);
+
+        if (success) {
+            return ResponseEntity.ok("Admission payment success");
+        }
+        return ResponseEntity.badRequest().body("Payment verification failed");
     }
+
 }

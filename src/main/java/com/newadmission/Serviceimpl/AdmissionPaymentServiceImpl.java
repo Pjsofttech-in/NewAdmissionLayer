@@ -55,11 +55,11 @@ public class AdmissionPaymentServiceImpl implements AdmissionPaymentService
 
 
     @Override
-    public Mono<Boolean> verifyPayment(RazorpayVerifyRequest request,String role, String email)
-    {
-        if (!staffService.hasPermission(role, email, "POST")) {
+    @Transactional
+    public boolean verifyPayment(RazorpayVerifyRequest request, String role, String email) {
 
-            return Mono.error(new RuntimeException("You don't have permission to verify payment"));
+        if (!staffService.hasPermission(role, email, "POST")) {
+            throw new AccessDeniedException("You don't have permission to verify payment");
         }
 
         String branchCode = staffService.fetchBranchCodeByRole(role, email);
@@ -67,28 +67,24 @@ public class AdmissionPaymentServiceImpl implements AdmissionPaymentService
         request.setSystemName(SYSTEM);
 
         AdmissionPaymentTransaction tx = transactionRepository
-                        .findByRazorpayOrderId(
-                                request.getRazorpayOrderId())
-                        .orElseThrow(() ->
-                                new RuntimeException("Transaction not found"));
+                .findByRazorpayOrderId(request.getRazorpayOrderId())
+                .orElseThrow(() -> new RuntimeException("Transaction not found"));
 
-        return staffService.verifyPayment(request)
-                .map(isValid -> {
+        boolean isValid = staffService.verifyPayment(request).block(); // OK here
 
-                    if (isValid) {
-                        tx.setStatus("SUCCESS");
-                        tx.setRazorpayPaymentId(
-                                request.getRazorpayPaymentId());
-                    } else {
-                        tx.setStatus("FAILED");
-                        tx.setFailureReason("Signature verification failed");
-                    }
+        if (isValid) {
+            tx.setStatus("SUCCESS");
+            tx.setRazorpayPaymentId(request.getRazorpayPaymentId());
+        } else {
+            tx.setStatus("FAILED");
+            tx.setFailureReason("Signature verification failed");
+        }
 
-                    tx.setUpdatedAt(LocalDateTime.now());
-                    transactionRepository.save(tx);
+        tx.setUpdatedAt(LocalDateTime.now());
+        transactionRepository.save(tx);
 
-                    return isValid;
-                });
+        return isValid;
     }
+
 
 }
