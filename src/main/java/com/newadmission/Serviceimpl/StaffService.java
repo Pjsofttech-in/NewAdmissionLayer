@@ -316,18 +316,9 @@ public class StaffService
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + internalToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
-                .exchangeToMono(response -> {
-
-                    if (response.statusCode().is2xxSuccessful()) {
-                        return response.bodyToMono(Boolean.class);
-                    }
-
-                    return response.bodyToMono(String.class)
-                            .doOnNext(err ->
-                                    System.out.println("Verify payment failed: " + err)
-                            )
-                            .thenReturn(false);
-                });
+                .retrieve() // 🔥 cleaner than exchangeToMono
+                .bodyToMono(Boolean.class);
     }
+
 
 }

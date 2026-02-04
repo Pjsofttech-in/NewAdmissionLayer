@@ -11,7 +11,6 @@ import java.util.Optional;
 @Repository
 public interface AdmissionPaymentTransactionRepository extends JpaRepository<AdmissionPaymentTransaction,Long>
 {
-
     Optional<AdmissionPaymentTransaction> findByRazorpayOrderIdAndSystemName(String razorpayOrderId, String systemName);
 
 }

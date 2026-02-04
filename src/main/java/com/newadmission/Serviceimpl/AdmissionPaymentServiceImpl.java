@@ -75,7 +75,7 @@ public class AdmissionPaymentServiceImpl implements AdmissionPaymentService
                         "Transaction not found for orderId=" + request.getRazorpayOrderId()
                 ));
 
-        boolean isValid = staffService.verifyPayment(request).block(); // OK here
+        boolean isValid = staffService.verifyPayment(request).block();
 
         if (isValid) {
             tx.setStatus("SUCCESS");

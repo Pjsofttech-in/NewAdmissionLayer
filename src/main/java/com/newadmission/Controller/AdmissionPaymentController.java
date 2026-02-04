@@ -33,8 +33,7 @@ public class AdmissionPaymentController
 
     @PostMapping("/verifyAdmissionPayment")
     public ResponseEntity<Boolean> verify(
-            @RequestParam String role,
-            @RequestParam String email,
+            @RequestParam String role, @RequestParam String email,
             @RequestBody RazorpayVerifyRequest request) {
 
         request.setSystemName("Admission Management Software");
