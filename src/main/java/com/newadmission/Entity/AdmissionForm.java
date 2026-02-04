@@ -34,7 +34,7 @@ public class AdmissionForm  {
     private String email;
     @Pattern(regexp = "^$|^[0-9]{10}$", message = "Mobile number must be 10 digits")
     private String mobile2;
-    private Long transactionId;
+    private String transactionId;
     private Double totalFees;
     private String remark;
     private String status;
