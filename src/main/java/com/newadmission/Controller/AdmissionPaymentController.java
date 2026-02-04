@@ -4,10 +4,7 @@ import com.newadmission.DTO.RazorpayVerifyRequest;
 import com.newadmission.Service.AdmissionPaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Mono;
-
 import java.util.Map;
 
 @RestController
@@ -35,7 +32,7 @@ public class AdmissionPaymentController
 
 
     @PostMapping("/verifyAdmissionPayment")
-    public ResponseEntity<String> verify(
+    public ResponseEntity<Boolean> verify(
             @RequestParam String role,
             @RequestParam String email,
             @RequestBody RazorpayVerifyRequest request) {
@@ -44,10 +41,7 @@ public class AdmissionPaymentController
 
         boolean success = paymentService.verifyPayment(request, role, email);
 
-        if (success) {
-            return ResponseEntity.ok("Admission payment success");
-        }
-        return ResponseEntity.badRequest().body("Payment verification failed");
+        return ResponseEntity.ok(success);
     }
 
 }

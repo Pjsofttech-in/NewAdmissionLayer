@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -312,9 +313,21 @@ public class StaffService
 
         return webClient.post()
                 .uri("/verifyPayment")
-                .header("Authorization", "Bearer " + internalToken)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + internalToken)
+                .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
-                .retrieve()
-                .bodyToMono(Boolean.class);
+                .exchangeToMono(response -> {
+
+                    if (response.statusCode().is2xxSuccessful()) {
+                        return response.bodyToMono(Boolean.class);
+                    }
+
+                    return response.bodyToMono(String.class)
+                            .doOnNext(err ->
+                                    System.out.println("Verify payment failed: " + err)
+                            )
+                            .thenReturn(false);
+                });
     }
+
 }
