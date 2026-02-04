@@ -36,7 +36,14 @@ public class AdmissionPaymentController
             @RequestParam String role, @RequestParam String email,
             @RequestBody RazorpayVerifyRequest request) {
 
-        request.setSystemName("Admission Management Software");
+        // basic safety check
+        if (request.getRazorpayOrderId() == null ||
+                request.getRazorpayPaymentId() == null ||
+                request.getRazorpaySignature() == null)
+        {
+
+            throw new IllegalArgumentException("Razorpay details are missing");
+        }
 
         boolean success = paymentService.verifyPayment(request, role, email);
 

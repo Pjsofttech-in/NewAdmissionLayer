@@ -316,9 +316,19 @@ public class StaffService
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + internalToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
-                .retrieve() // 🔥 cleaner than exchangeToMono
+                .retrieve()
+                .onStatus(
+                        HttpStatusCode::is4xxClientError,
+                        response -> response.bodyToMono(String.class)
+                                .flatMap(err -> {
+                                    System.out.println("Client verifyPayment failed: " + err);
+                                    return Mono.error(new RuntimeException(err));
+                                })
+
+                )
                 .bodyToMono(Boolean.class);
     }
+
 
 
 }

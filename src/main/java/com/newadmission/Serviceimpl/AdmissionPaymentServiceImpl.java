@@ -56,27 +56,37 @@ public class AdmissionPaymentServiceImpl implements AdmissionPaymentService
 
     @Override
     @Transactional
-    public boolean verifyPayment(RazorpayVerifyRequest request, String role, String email) {
+    public boolean verifyPayment(
+            RazorpayVerifyRequest request,
+            String role,
+            String email
+    ) {
 
+        // permission check
         if (!staffService.hasPermission(role, email, "POST")) {
             throw new AccessDeniedException("You don't have permission to verify payment");
         }
 
+        // enrich request
         String branchCode = staffService.fetchBranchCodeByRole(role, email);
         request.setBranchCode(branchCode);
-        request.setSystemName(SYSTEM);
+        request.setSystemName("Admission Management Software");
 
-        AdmissionPaymentTransaction tx = transactionRepository
-                .findByRazorpayOrderIdAndSystemName(
-                        request.getRazorpayOrderId(),
-                        SYSTEM
-                )
-                .orElseThrow(() -> new RuntimeException(
-                        "Transaction not found for orderId=" + request.getRazorpayOrderId()
-                ));
+        // fetch transaction
+        AdmissionPaymentTransaction tx =
+                transactionRepository
+                        .findByRazorpayOrderIdAndSystemName(
+                                request.getRazorpayOrderId(),
+                                request.getSystemName()
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException("Transaction not found")
+                        );
 
+        // 🔥 CALL CLIENT SERVICE
         boolean isValid = staffService.verifyPayment(request).block();
 
+        // update transaction
         if (isValid) {
             tx.setStatus("SUCCESS");
             tx.setRazorpayPaymentId(request.getRazorpayPaymentId());
@@ -90,6 +100,7 @@ public class AdmissionPaymentServiceImpl implements AdmissionPaymentService
 
         return isValid;
     }
+
 
 
 }
