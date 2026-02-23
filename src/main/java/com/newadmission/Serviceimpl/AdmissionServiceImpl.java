@@ -886,7 +886,7 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
     }
 
     // Helper methods
-    private double getPaidFees(AdmissionForm a) {
+    private Double getPaidFees(AdmissionForm a) {
         return a.getPaidFees() != null ? a.getPaidFees() : 0.0;
     }
 
