@@ -132,10 +132,10 @@ public class InstallmentServiceImpl implements InstallmentService {
                 .orElseThrow(() -> new RuntimeException("Admission not found with ID: " + admissionId));
 
         // Get current values
-        double totalInstallmentsPaid = installmentRepository.findByAdmissionId(admissionId).stream()
+        Double totalInstallmentsPaid = installmentRepository.findByAdmissionId(admissionId).stream()
                 .mapToDouble(Installment::getAmount)
                 .sum();
-        double currentPendingFees = admission.getPendingFees();
+        Double currentPendingFees = admission.getPendingFees();
 
         // Default status to Pending if not set
         if (installment.getStatus() == null || installment.getStatus().isEmpty()) {
@@ -155,8 +155,8 @@ public class InstallmentServiceImpl implements InstallmentService {
             }
 
             // Update admission fees
-            double updatedPendingFees = currentPendingFees - installment.getAmount();
-            double updatedPaidFees = totalInstallmentsPaid + installment.getAmount();
+            Double updatedPendingFees = currentPendingFees - installment.getAmount();
+            Double updatedPaidFees = totalInstallmentsPaid + installment.getAmount();
 
             admission.setPendingFees(updatedPendingFees);
             admission.setPaidFees(updatedPaidFees);
@@ -277,8 +277,8 @@ public class InstallmentServiceImpl implements InstallmentService {
                 .orElseThrow(() -> new RuntimeException("Installment not found"));
 
         AdmissionForm admission = inst.getAdmission();
-        double totalPaid = admission.getPaidFees() - inst.getAmount();
-        double pending = admission.getTotalFees() - totalPaid;
+        Double totalPaid = admission.getPaidFees() - inst.getAmount();
+        Double pending = admission.getTotalFees() - totalPaid;
 
         admission.setPaidFees(totalPaid);
         admission.setPendingFees(pending);
@@ -315,8 +315,8 @@ public class InstallmentServiceImpl implements InstallmentService {
 
         // Case 1: Not Paid → Paid
         if (!wasPaid && isNowPaid) {
-            double newPaidFees = admission.getPaidFees() + existing.getAmount();
-            double newPendingFees = admission.getTotalFees() - newPaidFees;
+            Double newPaidFees = admission.getPaidFees() + existing.getAmount();
+            Double newPendingFees = admission.getTotalFees() - newPaidFees;
 
             admission.setPaidFees(newPaidFees);
             admission.setPendingFees(newPendingFees);
@@ -327,8 +327,8 @@ public class InstallmentServiceImpl implements InstallmentService {
 
         // Case 2: Paid → Not Paid
         if (wasPaid && !isNowPaid) {
-            double updatedPaidFees = admission.getPaidFees() - existing.getAmount();
-            double updatedPendingFees = admission.getTotalFees() - updatedPaidFees;
+            Double updatedPaidFees = admission.getPaidFees() - existing.getAmount();
+            Double updatedPendingFees = admission.getTotalFees() - updatedPaidFees;
 
             admission.setPaidFees(updatedPaidFees);
             admission.setPendingFees(updatedPendingFees);
@@ -339,12 +339,12 @@ public class InstallmentServiceImpl implements InstallmentService {
 
         // ✅ Case 3: Paid → Paid and amount changed
         if (wasPaid && isNowPaid && updated.getAmount() != existing.getAmount()) {
-            double oldAmount = existing.getAmount();
-            double newAmount = updated.getAmount();
+            Double oldAmount = existing.getAmount();
+            Double newAmount = updated.getAmount();
 
-            double difference = oldAmount - newAmount;  // subtracting new from old
-            double newPendingFees = admission.getPendingFees() + difference;
-            double newPaidFees = admission.getTotalFees() - newPendingFees;
+            Double difference = oldAmount - newAmount;  // subtracting new from old
+            Double newPendingFees = admission.getPendingFees() + difference;
+            Double newPaidFees = admission.getTotalFees() - newPendingFees;
 
             admission.setPendingFees(newPendingFees);
             admission.setPaidFees(newPaidFees);
@@ -402,8 +402,8 @@ public class InstallmentServiceImpl implements InstallmentService {
         boolean isPaidNow = "Paid".equalsIgnoreCase(newStatus);
 
         // Handle null values for paidFees before performing arithmetic
-        double paidFees = (admission.getPaidFees() != null) ? admission.getPaidFees() : 0.0;
-        double totalPaid = paidFees + installment.getAmount();
+        Double paidFees = (admission.getPaidFees() != null) ? admission.getPaidFees() : 0.0;
+        Double totalPaid = paidFees + installment.getAmount();
 
         // Update admission fees only if status changed to "Paid" and was not previously "Paid"
         if (!wasPaidBefore && isPaidNow) {
