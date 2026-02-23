@@ -329,9 +329,18 @@ public class AdmissionController {
             @RequestParam String email,
             @RequestParam(required = false) String branchCode,
             @RequestParam(required = false) Integer month,
-            @RequestParam(required = false) Integer year
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) String timeframe, // today, 7days, 30days, 365days, custom
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        Map<String, Object> result = admissionService.getAdmissionsCountByStaffInBranch(role, email, branchCode,month,year);
+
+        Map<String, Object> result =
+                admissionService.getAdmissionsCountByStaffInBranch(
+                        role, email, branchCode, month, year,
+                        timeframe, startDate, endDate
+                );
+
         return ResponseEntity.ok(result);
     }
 

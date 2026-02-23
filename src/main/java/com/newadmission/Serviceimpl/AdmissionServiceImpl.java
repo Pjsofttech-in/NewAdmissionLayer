@@ -1710,13 +1710,15 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
     }
 
     @Override
-    public Map<String, Object> getAdmissionsCountByStaffInBranch(String role, String email, String branchCode, Integer month, Integer year) {
+    public Map<String, Object> getAdmissionsCountByStaffInBranch(String role, String email, String branchCode, Integer month,
+            Integer year, String timeframe, LocalDate startDate, LocalDate endDate) {
 
         if (!hasPermission(role, email, "GET")) {
             throw new AccessDeniedException("You do not have permission to view this data.");
         }
 
         List<AdmissionForm> admissions;
+
 
         if ("SUPERADMIN".equalsIgnoreCase(role)) {
 
@@ -1751,13 +1753,65 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
             }
 
         } else {
+
             String resolvedBranchCode = fetchBranchCodeByRole(role, email);
+
             if (branchCode != null && !resolvedBranchCode.equals(branchCode)) {
                 throw new AccessDeniedException("You do not belong to this branch");
             }
 
             admissions = admissionRepository.findAll().stream()
                     .filter(a -> resolvedBranchCode.equals(a.getBranchCode()))
+                    .collect(Collectors.toList());
+        }
+
+        // ==================================================
+        // ✅ NEW TIMEFRAME FILTER LOGIC (ADDED SECTION)
+        // ==================================================
+
+        if (timeframe != null && !timeframe.isBlank()) {
+
+            LocalDate today = LocalDate.now();
+            LocalDate fromDate = null;
+            LocalDate toDate = today;
+
+            switch (timeframe.toLowerCase()) {
+
+                case "today":
+                    fromDate = today;
+                    break;
+
+                case "7days":
+                    fromDate = today.minusDays(7);
+                    break;
+
+                case "30days":
+                    fromDate = today.minusDays(30);
+                    break;
+
+                case "365days":
+                    fromDate = today.minusDays(365);
+                    break;
+
+                case "custom":
+                    if (startDate == null || endDate == null) {
+                        throw new IllegalArgumentException("For custom timeframe, startDate and endDate are required.");
+                    }
+                    fromDate = startDate;
+                    toDate = endDate;
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Invalid timeframe value.");
+            }
+
+            LocalDate finalFromDate = fromDate;
+            LocalDate finalToDate = toDate;
+
+            admissions = admissions.stream()
+                    .filter(a -> a.getDate() != null &&
+                            !a.getDate().isBefore(finalFromDate) &&
+                            !a.getDate().isAfter(finalToDate))
                     .collect(Collectors.toList());
         }
 
@@ -1789,6 +1843,7 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
                 ));
 
         Map<String, Object> result = new LinkedHashMap<>();
+
         admissionCountByStaff.forEach((staffEmail, count) -> {
             Map<String, Object> details = new LinkedHashMap<>();
             details.put("admissionCount", count);
