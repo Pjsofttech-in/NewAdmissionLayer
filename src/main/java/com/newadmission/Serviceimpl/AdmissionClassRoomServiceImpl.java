@@ -181,9 +181,9 @@ public class AdmissionClassRoomServiceImpl implements AdmissionClassRoomService 
             if (admission.getAdmissionClassRoom() == null ||
                     !admission.getAdmissionClassRoom().getId().equals(classRoomId)) {
 
-                if (admission.getRollNo() == null || admission.getRollNo() == 0) {
-                    admission.setRollNo(rollNo++);
-                }
+//                if (admission.getRollNo() == null || admission.getRollNo() == 0) {
+                admission.setRollNo(rollNo++);
+//                }
             }
 
             admission.setAdmissionClassRoom(classRoom);
