@@ -214,6 +214,55 @@ public class StaffService
                 .block();
     }
 
+    public List<Map<String, Object>> getDepartmentByBranchCode(String branchCode) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/getDepartmentByBranchcode")
+                        .queryParam("branchCode", branchCode)
+                        .build())
+                .retrieve()
+                .bodyToFlux(Map.class)
+                .map(dept -> Map.of(
+                        "name", dept.get("departmentName"),
+                        "email", dept.get("departmentEmail")
+                ))
+                .collectList()
+                .block();
+    }
+
+    public List<Map<String, Object>> getDepartmentForSuperAdmin(String branchCode, String instituteEmail) {
+        if (branchCode != null && !branchCode.isEmpty()) {
+            return webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/getDepartmentByBranchcode")
+                            .queryParam("branchCode", branchCode)
+                            .build())
+                    .retrieve()
+                    .bodyToFlux(Map.class)
+                    .map(dept -> Map.of(
+                            "name", dept.get("departmentName"),
+                            "email", dept.get("departmentEmail")
+                    ))
+                    .collectList()
+                    .block();
+        } else {
+            return webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/getDepartmentByInstituteEmail")
+                            .queryParam("instituteEmail", instituteEmail)
+                            .build())
+                    .retrieve()
+                    .bodyToFlux(Map.class)
+                    .map(dept -> Map.of(
+                            "name", dept.get("departmentName"),
+                            "email", dept.get("departmentEmail"),
+                            "branchCode", dept.get("branchCode")
+                    ))
+                    .collectList()
+                    .block();
+        }
+    }
+
     public List<Map<String, Object>> getStaffInfoForSuperAdmin(String branchCode, String instituteEmail) {
         if (branchCode != null && !branchCode.isEmpty()) {
             return webClient.get()

@@ -58,4 +58,5 @@ public interface AdmissionService {
     Map<String, Object> getAdmissionsCountByStaffInBranch(String role, String email, String branchCode, Integer month, Integer year, String timeframe,
             LocalDate startDate, LocalDate endDate);
     List<Map<String, Object>> getStaffInfo(String role, String email, String branchCode);
+    List<Map<String, Object>> getDepartmentInfo(String role, String email, String branchCode);
 }
