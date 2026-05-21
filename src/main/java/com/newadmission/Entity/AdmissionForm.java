@@ -8,6 +8,7 @@ import lombok.*;
 
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -90,6 +91,20 @@ public class AdmissionForm  {
     private String studentType;
     private String stream;
     private String classType;
+
+    // --- NEW TAX & ACCOUNTING COLUMNS ---
+    private Boolean isGstApplicable;
+
+    @Column(name = "base_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal baseAmount = BigDecimal.ZERO;
+
+    @Column(name = "gst_rate", nullable = false, precision = 5, scale = 2)
+    private BigDecimal gstRate = BigDecimal.ZERO;
+
+    @Column(name = "gst_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal gstAmount = BigDecimal.ZERO;
+
+    private Boolean isGstInclusive;
 
     @OneToMany(mappedBy = "admission", cascade = CascadeType.ALL)
     private List<Installment> installments;
