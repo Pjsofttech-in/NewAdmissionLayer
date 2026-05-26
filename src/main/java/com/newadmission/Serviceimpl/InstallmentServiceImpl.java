@@ -143,25 +143,29 @@ public class InstallmentServiceImpl implements InstallmentService {
         }
 
         // Only apply amount if status is "Paid"
-        if ("Paid".equalsIgnoreCase(installment.getStatus())) {
-            // Check if there are pending fees
-            if (currentPendingFees <= 0) {
-                throw new RuntimeException("No pending fees left for installment.");
-            }
-
-            // Check if amount is valid
-            if (installment.getAmount() > currentPendingFees) {
-                throw new RuntimeException("Installment amount cannot exceed the pending fees.");
-            }
-
-            // Update admission fees
-            Double updatedPendingFees = currentPendingFees - installment.getAmount();
-            Double updatedPaidFees = totalInstallmentsPaid + installment.getAmount();
-
-            admission.setPendingFees(updatedPendingFees);
-            admission.setPaidFees(updatedPaidFees);
-            admission.setStatus(updatedPendingFees == 0 ? "Completed" : "In Progress");
+//        if ("Paid".equalsIgnoreCase(installment.getStatus())) {
+        // Check if there are pending fees
+        if (currentPendingFees <= 0) {
+            throw new RuntimeException("No pending fees left for installment.");
         }
+
+        // Check if amount is valid
+        if (installment.getAmount() > currentPendingFees) {
+            throw new RuntimeException("Installment amount cannot exceed the pending fees.");
+        }
+
+        if (admission.getTotalFees() < totalInstallmentsPaid + installment.getAmount()) {
+            throw new RuntimeException("Installment amount cannot exceed the total fees.");
+        }
+
+        // Update admission fees
+//        Double updatedPendingFees = currentPendingFees - installment.getAmount();
+//        Double updatedPaidFees = totalInstallmentsPaid + installment.getAmount();
+
+//        admission.setPendingFees(updatedPendingFees);
+//        admission.setPaidFees(updatedPaidFees);
+//        admission.setStatus(updatedPendingFees == 0 ? "Completed" : "In Progress");
+//        }
 
         // Set invoice number
         installment.setInvoiceNo(generateUniqueInvoiceNo());

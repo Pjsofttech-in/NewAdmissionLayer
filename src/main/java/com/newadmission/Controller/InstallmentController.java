@@ -3,6 +3,7 @@ package com.newadmission.Controller;
 import com.newadmission.DTO.StatusResponse;
 import com.newadmission.Entity.Installment;
 import com.newadmission.Service.InstallmentService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +21,7 @@ public class InstallmentController {
 
     @PostMapping("/add/{admissionId}")
     public ResponseEntity<Installment> addInstallment(@PathVariable Long admissionId,
-                                                      @RequestBody Installment installment,
+                                                      @RequestBody @Valid Installment installment,
                                                       @RequestParam String role,
                                                       @RequestParam String email) {
         return ResponseEntity.ok(installmentService.addInstallmentToAdmission(admissionId, installment, role, email));

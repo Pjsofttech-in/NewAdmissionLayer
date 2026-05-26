@@ -3,6 +3,7 @@ package com.newadmission.Entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,6 +24,7 @@ public class Installment {
 
     private String invoiceNo;
 
+    @Positive(message = "Amount cannot be negative or zero")
     private double amount;
 
     private String paidBy;
