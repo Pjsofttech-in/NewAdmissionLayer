@@ -1,22 +1,27 @@
 package com.newadmission.Serviceimpl;
 
 import com.newadmission.DTO.BulkWhatsAppRequest;
+import com.newadmission.DTO.FeeReminderDTO;
 import com.newadmission.DTO.WhatsAppRecipientDTO;
 import com.newadmission.Entity.AdmissionForm;
 import com.newadmission.Entity.Installment;
+import com.newadmission.JWT.LoginRequest;
+import com.newadmission.JWT.LoginResponse;
 import com.newadmission.Repository.AdmissionRepository;
 import com.newadmission.Repository.InstallmentRepository;
 import com.newadmission.Service.GupshupService;
 import com.newadmission.Service.InstallmentService;
+import com.newadmission.util.HelperUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 @Service
 public class InstallmentServiceImpl implements InstallmentService {
@@ -99,7 +104,6 @@ public class InstallmentServiceImpl implements InstallmentService {
 
         return String.format("INV%06d", nextNumber); // e.g., INV000001, INV000002...
     }
-
 
 
     // Method to fetch the branch code based on role
@@ -251,6 +255,7 @@ public class InstallmentServiceImpl implements InstallmentService {
 
         return saved;
     }
+
     // ✅ Utility to handle +91 / 91 / 10-digit numbers
     private String normalizeToIndianFormat(String rawMobile) {
         if (rawMobile == null || rawMobile.isBlank()) return null;
@@ -259,7 +264,6 @@ public class InstallmentServiceImpl implements InstallmentService {
         if (rawMobile.length() == 10) return "91" + rawMobile;
         return null; // invalid
     }
-
 
 
     @Override
@@ -425,6 +429,34 @@ public class InstallmentServiceImpl implements InstallmentService {
         return installmentRepository.save(installment);
     }
 
+    @Override
+    public List<Installment> getFeesDueInDays(Integer days) {
+        LocalDate startOfToday = LocalDate.now();
+        LocalDate endOfNextWeek = LocalDate.now().plusWeeks(1);
+        LoginRequest loginReq = new LoginRequest();
+        loginReq.setEmail("neha@gmail.com");
+        loginReq.setPassword("12345678");
+        LoginResponse loginResponse = staffService.loginStaff(loginReq).block();
+        List<Installment> allScheduledFeesDueInBetween = installmentRepository.getAllScheduledFeesDueInBetween(startOfToday, endOfNextWeek);
+        if (!CollectionUtils.isEmpty(allScheduledFeesDueInBetween)) {
+            allScheduledFeesDueInBetween.forEach(studentFeeSchedule -> {
+                String stringMono = staffService.sendFeeReminderViaWati(mapToFeesReminder(studentFeeSchedule), loginResponse.getToken())
+                        .block();
+                System.out.println(stringMono);
+            });
+        }
+        return allScheduledFeesDueInBetween;
+    }
 
+    public FeeReminderDTO mapToFeesReminder(Installment obj) {
+        FeeReminderDTO dto = new FeeReminderDTO();
+        dto.setDueDateStr(HelperUtil.getDateWithFormat(obj.getDueDate()));
+        if (obj.getAdmission() != null && obj.getAdmission().getMobile1() != null) {
+            dto.setStudentPhoneNo(obj.getAdmission().getMobile1());
+        }
+        dto.setCollectAmount(obj.getAmount());
+        dto.setStudentName(obj.getAdmission().getName());
+        return dto;
+    }
 
 }

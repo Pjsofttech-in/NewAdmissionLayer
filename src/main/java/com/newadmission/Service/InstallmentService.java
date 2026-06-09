@@ -18,4 +18,5 @@ public interface InstallmentService {
 
     Installment updateInstallmentStatus(Long installmentId, String newStatus, String role, String email);
 
+    List<Installment> getFeesDueInDays(Integer days);
 }

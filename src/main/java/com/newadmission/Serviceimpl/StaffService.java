@@ -5,7 +5,6 @@ import com.newadmission.JWT.InternalJwtProvider;
 import com.newadmission.JWT.LoginRequest;
 import com.newadmission.JWT.LoginResponse;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.constraints.Email;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -21,11 +20,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
-public class StaffService
-{
+public class StaffService {
     private final WebClient webClient;
 
     @Autowired
@@ -63,7 +60,8 @@ public class StaffService
                         .build())
                 .header(HttpHeaders.AUTHORIZATION, token)  // pass it as-is
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, Boolean>>() {})
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Boolean>>() {
+                })
                 .block();
     }
 
@@ -144,7 +142,8 @@ public class StaffService
                         .build())
                 .header(HttpHeaders.AUTHORIZATION, token)  // Pass token directly
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
                 .block();
 
     }
@@ -156,7 +155,8 @@ public class StaffService
                         .queryParam("instituteEmail", instituteEmail)
                         .build())
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, String>>() {})
+                .bodyToMono(new ParameterizedTypeReference<Map<String, String>>() {
+                })
                 .block();
 
         return branchMap != null
@@ -171,7 +171,8 @@ public class StaffService
                         .queryParam("instituteEmail", instituteEmail)
                         .build())
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, String>>() {})
+                .bodyToMono(new ParameterizedTypeReference<Map<String, String>>() {
+                })
                 .block();
     }
 
@@ -187,6 +188,7 @@ public class StaffService
 
         return response != null ? response.getInstituteResponseDTOS() : Collections.emptyList();
     }
+
     public Mono<String> getInstituteEmailByBranchCode(String branchCode) {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -352,7 +354,8 @@ public class StaffService
                         .build())
                 .header("Authorization", "Bearer " + internalToken)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
                 .block();
     }
 
@@ -378,6 +381,17 @@ public class StaffService
                 .bodyToMono(Boolean.class);
     }
 
-
+    public Mono<String> sendFeeReminderViaWati(FeeReminderDTO request, String token) {
+        return webClient.post()
+                .uri("/watiTemplate/sendStudentFeeReminderMessage")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .bodyValue(request)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(error -> Mono.error(new RuntimeException("Login Failed: " + error)))
+                )
+                .bodyToMono(String.class);
+    }
 
 }

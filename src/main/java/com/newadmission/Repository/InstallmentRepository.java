@@ -34,6 +34,10 @@ public interface InstallmentRepository extends JpaRepository<Installment, Long> 
 //            "AND i.admission.branchCode = :branchCode")
 //    Double getFuturePending(@Param("today") LocalDate today, @Param("branchCode") String branchCode);
 
-
-
+    @Query("""
+            SELECT i FROM Installment i LEFT JOIN FETCH i.admission a
+            WHERE lower(i.status) = 'pending' AND i.dueDate BETWEEN :low AND :high
+            ORDER BY i.id DESC
+            """)
+    List<Installment> getAllScheduledFeesDueInBetween(@Param("low") LocalDate low, @Param("high") LocalDate high);
 }
