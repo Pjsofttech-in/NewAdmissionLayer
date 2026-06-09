@@ -2,10 +2,9 @@ package com.newadmission.Pegination;
 
 import com.newadmission.DTO.AdmissionFilterRequest;
 import com.newadmission.Entity.AdmissionForm;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
+import com.newadmission.Entity.Installment;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
-import jakarta.persistence.criteria.Predicate;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -103,6 +102,24 @@ public class AdmissionSpecification {
                 }
 
                 predicates.add(cb.between(root.get("date"), fromDate, toDate));
+            }
+
+            if (request.getPaymentDueDate() != null) {
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<Installment> childRoot = subquery.from(Installment.class);
+
+            //        This is applicable if we have @OneToMany relationship in StudentFees table
+            //        subquery.select(childRoot.get("id"));
+            //        Predicate parentLink = cb.equal(childRoot.get("studentFees"), root);
+            //        Predicate emailLink = cb.equal(childRoot.get("email"), email);
+            //
+            //        subquery.where(parentLink,emailLink);
+            //        predicates.add(cb.exists(subquery));
+
+                subquery.select(childRoot.get("admission").get("id"));
+                subquery.where(cb.equal(childRoot.get("dueDate"), request.getPaymentDueDate()));
+
+                predicates.add(cb.in(root.get("id")).value(subquery));
             }
 
             // 🔹 createdByEmail filter

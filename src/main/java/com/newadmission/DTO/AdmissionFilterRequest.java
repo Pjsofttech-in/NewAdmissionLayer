@@ -26,6 +26,7 @@ public class AdmissionFilterRequest {
     private String filterType; // today, last7days, last30days, last365days, custom
     private LocalDate startDate;
     private LocalDate endDate;
+    private LocalDate paymentDueDate;
 
     private String installmentCount; // <-- newly added
     private String month;
