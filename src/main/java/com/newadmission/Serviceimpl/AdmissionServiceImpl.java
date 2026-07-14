@@ -1,5 +1,6 @@
 package com.newadmission.Serviceimpl;
 
+import com.beust.jcommander.internal.Maps;
 import com.beust.jcommander.internal.Nullable;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -18,8 +19,10 @@ import com.newadmission.Repository.AdmissionRepository;
 import com.newadmission.Repository.AdmissionRulesAndRegulationsRepository;
 import com.newadmission.Repository.AdmissionSubjectRepository;
 import com.newadmission.Service.*;
+import com.newadmission.util.HelperUtil;
 import com.opencsv.CSVReaderHeaderAware;
 import io.jsonwebtoken.Claims;
+import io.micrometer.common.util.StringUtils;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -35,6 +38,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -1881,6 +1885,84 @@ public List<AdmissionForm> filterStudentsByClassroom(String academicYear, String
             String branchCode1 = fetchBranchCodeByRole(role, email);
             return staffService.getDepartmentByBranchCode(branchCode1);
         }
+    }
+
+    @Override
+    public Map<Long, Object> sendWhatsappMessage(String role, String email, WhatsappMessageDTO whatsappMessageDTO) {
+        hasPermission(role, email, "Put");
+        List<AdmissionForm> studentEntityList = admissionRepository.findAllById(whatsappMessageDTO.getStudentIdList());
+        Map<Long, Object> result = new HashMap<>();
+        if (!CollectionUtils.isEmpty(studentEntityList)) {
+            Map<String, Object> parameters = whatsappMessageDTO.getParameters();
+            for (AdmissionForm studentEntity : studentEntityList) {
+                Map<String, Object> newMap = new HashMap<>();
+                if (parameters != null) {
+                    parameters.forEach((s, o) -> {
+                        switch (o.toString()) {
+                            case "name":
+                                newMap.put(s, studentEntity.getName());
+                                break;
+                            case "roleNo":
+                                newMap.put(s, studentEntity.getRollNo());
+                                break;
+                            case "enrollmentDate":
+                                newMap.put(s, HelperUtil.getDateWithFormat(studentEntity.getDate()));
+                                break;
+                            case "registrationNumber":
+                                newMap.put(s, studentEntity.getRegistrationNo());
+                                break;
+                            case "course":
+                                newMap.put(s, studentEntity.getCoursename());
+                                break;
+                        }
+                    });
+                }
+                whatsappMessageDTO.setWhatsappNumber(getContactWithCountryCode(studentEntity));
+                whatsappMessageDTO.setParameters(newMap);
+                List<Map<String, Object>> response;
+                String status;
+                try {
+                    response = staffService.sendWhatsappMessage(whatsappMessageDTO);
+                    status = !response.isEmpty() ? String.valueOf(response.get(0).get("status")) : "Failed";
+                } catch (Exception e) {
+                    status = "Failed";
+                }
+                result.put(studentEntity.getId(), status);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public Map<String, String> getWhatsappParameterOptions(String role, String email) {
+        hasPermission(role, email, "Get");
+        Map<String, String> result = Maps.newHashMap();
+        result.put("Full Name", "name");
+        result.put("Role No", "roleNo");
+        result.put("Enrollment Date", "enrollmentDate");
+        result.put("Registration No", "registrationNumber");
+        result.put("Course", "course");
+
+        return result;
+    }
+
+    @Override
+    public List<WatiTemplateDTO> getWatiTemplatesByBranchCode(String role, String email) {
+        try {
+            hasPermission(role, email, "GET");
+            String branchCode = staffService.fetchBranchCodeByRole(role, email);
+            return staffService.getWatiTemplatesByBranchCode(branchCode);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static String getContactWithCountryCode(AdmissionForm student) {
+        String contact = StringUtils.isNotBlank(student.getMobile1()) ? student.getMobile1() : student.getMobile2();
+        if (StringUtils.isNotBlank(contact)) {
+            return contact.length() == 10 ? "91" + contact : contact;
+        }
+        return contact;
     }
 
 }

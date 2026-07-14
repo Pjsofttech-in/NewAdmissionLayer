@@ -59,4 +59,10 @@ public interface AdmissionService {
             LocalDate startDate, LocalDate endDate);
     List<Map<String, Object>> getStaffInfo(String role, String email, String branchCode);
     List<Map<String, Object>> getDepartmentInfo(String role, String email, String branchCode);
+
+    Map<Long, Object> sendWhatsappMessage(String role, String email, WhatsappMessageDTO whatsappMessageDTO);
+
+    Map<String, String> getWhatsappParameterOptions(String role, String email);
+
+    List<WatiTemplateDTO> getWatiTemplatesByBranchCode(String role, String email);
 }

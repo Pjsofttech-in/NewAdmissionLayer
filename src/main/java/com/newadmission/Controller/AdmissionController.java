@@ -3,26 +3,20 @@ package com.newadmission.Controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.newadmission.DTO.*;
 import com.newadmission.Entity.AdmissionForm;
 import com.newadmission.JWT.JwtUtil;
 import com.newadmission.Service.AdmissionService;
-import io.jsonwebtoken.Claims;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -64,14 +58,37 @@ public class AdmissionController {
     }
 
 
-
     @PostMapping("/getAllAdmissions")
     public ResponseEntity<Map<String, Object>> getAllAdmissions(@RequestBody AdmissionFilterRequest request) {
         Map<String, Object> response = admissionService.getAllAdmissions(request);
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/sendWhatsappMessage")
+    public ResponseEntity<Map<Long, Object>> sendWhatsappMessage(
+            @RequestParam String role,
+            @RequestParam String email,
+            @RequestBody WhatsappMessageDTO whatsappMessageDTO
+    ) {
+        Map<Long, Object> result = admissionService.sendWhatsappMessage(role, email, whatsappMessageDTO);
+        return ResponseEntity.ok(result);
+    }
 
+    @GetMapping("/getWhatsappParameterOptions")
+    public ResponseEntity<Map<String, String>> getWhatsappParameterOptions(
+            @RequestParam String role,
+            @RequestParam String email
+    ) {
+        Map<String, String> result = admissionService.getWhatsappParameterOptions(role, email);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/getWatiTemplatesByBranchCode")
+    public List<WatiTemplateDTO> getWatiTemplatesByBranchCode(
+            @RequestParam String role,
+            @RequestParam String email) {
+        return admissionService.getWatiTemplatesByBranchCode(role, email);
+    }
 
     @GetMapping("/getAdmissionById/{id}")
     public ResponseEntity<AdmissionForm> getAdmissionById(@PathVariable Long id,
@@ -90,7 +107,7 @@ public class AdmissionController {
             @RequestParam("role") String role,
             @RequestParam("email") String email
     ) {
-        AdmissionForm updatedAdmissionForm = admissionService.updateAdmission(id, admissionJson, studentImage,paymentImage, role, email);
+        AdmissionForm updatedAdmissionForm = admissionService.updateAdmission(id, admissionJson, studentImage, paymentImage, role, email);
         return ResponseEntity.ok(updatedAdmissionForm);
     }
 
@@ -118,9 +135,6 @@ public class AdmissionController {
     }
 
 
-
-
-
     @GetMapping("/filterstudents")
     public ResponseEntity<List<AdmissionForm>> getFilteredStudents(
             @RequestParam String academicYear,
@@ -133,6 +147,7 @@ public class AdmissionController {
                 academicYear, mediumName, courseName, role, email);
         return ResponseEntity.ok(filtered);
     }
+
     @GetMapping("/getAdmissionsByClassroomId")
     public ResponseEntity<List<AdmissionForm>> getAdmissionsByClassroomId(
             @RequestParam Long classroomId,
@@ -225,7 +240,6 @@ public class AdmissionController {
     }
 
 
-
     @GetMapping("/getAdmissionsByTeacherEmail")
     public ResponseEntity<List<AdmissionForm>> getAdmissionsByTeacherEmail(
             @RequestParam String email,
@@ -235,6 +249,7 @@ public class AdmissionController {
         List<AdmissionForm> admissions = admissionService.getAdmissionsByTeacherEmail(email, role, branchCode);
         return ResponseEntity.ok(admissions);
     }
+
     @PostMapping("/userlogin")
     public AdmissionLoginResponse login(@RequestBody AdmissionLoginRequest request) {
         return admissionService.login(request);
