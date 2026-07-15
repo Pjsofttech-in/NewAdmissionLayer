@@ -1,8 +1,10 @@
 package com.newadmission.Serviceimpl;
 
 import com.newadmission.DTO.RazorpayVerifyRequest;
+import com.newadmission.Entity.AdmissionForm;
 import com.newadmission.Entity.AdmissionPaymentTransaction;
 import com.newadmission.Repository.AdmissionPaymentTransactionRepository;
+import com.newadmission.Repository.AdmissionRepository;
 import com.newadmission.Service.AdmissionPaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,6 +23,9 @@ public class AdmissionPaymentServiceImpl implements AdmissionPaymentService
     StaffService staffService;
 
     @Autowired
+    AdmissionRepository admissionRepository;
+
+    @Autowired
     AdmissionPaymentTransactionRepository transactionRepository;
 
     @Override
@@ -30,6 +35,30 @@ public class AdmissionPaymentServiceImpl implements AdmissionPaymentService
 
         if (!staffService.hasPermission(role, email, "Post")) {
             throw new AccessDeniedException("You don't have permission to create payment");
+        }
+
+        // 2. Fetch the Admission record
+        AdmissionForm admission = admissionRepository.findById(admissionId)
+                .orElseThrow(() -> new IllegalArgumentException("Admission record not found"));
+
+        // 3. Safely get the pending amount (fallback to 0.0 if null)
+        double pendingAmount = admission.getPendingFees() != null ? admission.getPendingFees() : 0.0;
+
+        // 4. THE SAFEGUARD: Convert and Check the amounts
+        // Note: If the 'amount' parameter is coming in as Paise (e.g., 50000 for ₹500),
+        // you must divide by 100 before comparing it to the database value.
+        // If the frontend sends it as Rupees (e.g., 500), remove the "/ 100.0".
+
+         double requestedAmountInRupees = amount.doubleValue() / 100.0; // <-- Use this if 'amount' is in paise
+
+        if (requestedAmountInRupees <= 0) {
+            throw new IllegalArgumentException("Payment amount must be greater than zero.");
+        }
+
+        if (requestedAmountInRupees > pendingAmount) {
+            throw new IllegalArgumentException("Payment failed: The requested amount ("
+                    + requestedAmountInRupees + ") exceeds the pending balance ("
+                    + pendingAmount + ").");
         }
 
         String branchCode = staffService.fetchBranchCodeByRole(role, email);
