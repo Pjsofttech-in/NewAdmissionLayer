@@ -14,10 +14,7 @@ import com.newadmission.Entity.AdmissionRulesAndRegulations;
 import com.newadmission.Entity.Installment;
 import com.newadmission.JWT.JwtUtil;
 import com.newadmission.Pegination.AdmissionSpecification;
-import com.newadmission.Repository.AdmissionClassRoomRepository;
-import com.newadmission.Repository.AdmissionRepository;
-import com.newadmission.Repository.AdmissionRulesAndRegulationsRepository;
-import com.newadmission.Repository.AdmissionSubjectRepository;
+import com.newadmission.Repository.*;
 import com.newadmission.Service.*;
 import com.newadmission.util.HelperUtil;
 import com.opencsv.CSVReaderHeaderAware;
@@ -48,6 +45,8 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.Month;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -56,6 +55,7 @@ import java.util.stream.Collectors;
 public class AdmissionServiceImpl implements AdmissionService {
 
     private final AdmissionRepository admissionRepository;
+    private final InstallmentRepository installmentRepository;
     private final WebClient webClient;
     private final StaffService staffService;
     private final S3Service s3Service;
@@ -90,8 +90,9 @@ public class AdmissionServiceImpl implements AdmissionService {
     private String superAdminBaseUrl;
 
     @Autowired
-    public AdmissionServiceImpl(AdmissionRepository admissionRepository, WebClient webClient, StaffService staffService, S3Service s3Service,AdmissionSubjectRepository admissionSubjectRepository) {
+    public AdmissionServiceImpl(AdmissionRepository admissionRepository, InstallmentRepository installmentRepository, WebClient webClient, StaffService staffService, S3Service s3Service, AdmissionSubjectRepository admissionSubjectRepository) {
         this.admissionRepository = admissionRepository;
+        this.installmentRepository = installmentRepository;
         this.webClient = webClient;
         this.staffService = staffService;
         this.s3Service = s3Service;

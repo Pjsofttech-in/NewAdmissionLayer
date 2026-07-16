@@ -1,5 +1,6 @@
 package com.newadmission.Repository;
 
+import com.newadmission.DTO.*;
 import com.newadmission.Entity.AdmissionForm;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,8 +25,91 @@ public interface AdmissionRepository extends JpaRepository<AdmissionForm, Long> 
     );
 
 
-//
+    // Grabs daily revenue directly from the Admission form,
+    // BUT ONLY if their installments list is empty (prevents double-counting).
+    @Query("SELECT a.paymentDate AS date, SUM(a.paidFees) AS total " +
+            "FROM AdmissionForm a " +
+            "WHERE a.paymentDate BETWEEN :startDate AND :endDate " +
+            "AND a.paidFees > 0 " +
+            "AND a.installments IS EMPTY " +
+            "AND a.branchCode = :branchCode " +
+            "GROUP BY a.paymentDate")
+    List<DailyRevenueDTO> getDirectAdmissionRevenueBetween(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("branchCode") String branchCode
+    );
 
+    /**
+     * Calculates summary for students paying upfront (no installments) based on Admission Due Date.
+     */
+    @Query("SELECT " +
+            "COALESCE(SUM(a.totalFees), 0.0) AS totalFees, " +
+            "COALESCE(SUM(a.paidFees), 0.0) AS paidFees, " +
+            "COALESCE(SUM(a.pendingFees), 0.0) AS pendingFees " +
+            "FROM AdmissionForm a " +
+            "WHERE a.dueDate BETWEEN :startDate AND :endDate " +
+            "AND a.branchCode = :branchCode " +
+            "AND a.installments IS EMPTY")
+    FeeSummaryProjection getDirectAdmissionSummaryByMonth(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("branchCode") String branchCode
+    );
+
+    @Query("SELECT a.paymentMode AS paymentMode, SUM(a.paidFees) AS totalAmount " +
+            "FROM AdmissionForm a " +
+            "WHERE a.paymentDate BETWEEN :startDate AND :endDate " +
+            "AND a.paidFees > 0 " +
+            "AND a.installments IS EMPTY " +
+            "AND a.branchCode = :branchCode " +
+            "GROUP BY a.paymentMode")
+    List<PaymentModeSummaryDTO> getDirectAdmissionRevenueByPaymentMode(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("branchCode") String branchCode
+    );
+
+    @Query("SELECT a.coursename AS courseName, SUM(a.paidFees) AS totalAmount " +
+            "FROM AdmissionForm a " +
+            "WHERE a.paymentDate BETWEEN :startDate AND :endDate " +
+            "AND a.paidFees > 0 " +
+            "AND a.installments IS EMPTY " +
+            "AND a.branchCode = :branchCode " +
+            "GROUP BY a.coursename")
+    List<CourseRevenueDTO> getDirectAdmissionRevenueByCourse(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("branchCode") String branchCode
+    );
+
+    @Query("SELECT YEAR(a.paymentDate) AS year, SUM(a.paidFees) AS totalAmount " +
+            "FROM AdmissionForm a " +
+            "WHERE a.paymentDate BETWEEN :startDate AND :endDate " +
+            "AND a.paidFees > 0 " +
+            "AND a.installments IS EMPTY " +
+            "AND a.branchCode = :branchCode " +
+            "GROUP BY YEAR(a.paymentDate) " +
+            "ORDER BY YEAR(a.paymentDate) ASC")
+    List<YearlyRevenueDTO> getDirectAdmissionRevenueByYearRange(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("branchCode") String branchCode
+    );
+
+    @Query("SELECT MONTH(a.paymentDate) AS month, SUM(a.paidFees) AS totalAmount " +
+            "FROM AdmissionForm a " +
+            "WHERE YEAR(a.paymentDate) = :year " +
+            "AND a.paidFees > 0 " +
+            "AND a.installments IS EMPTY " +
+            "AND a.branchCode = :branchCode " +
+            "GROUP BY MONTH(a.paymentDate) " +
+            "ORDER BY MONTH(a.paymentDate) ASC")
+    List<MonthlyRevenueDTO> getDirectAdmissionRevenueByYearMonthWise(
+            @Param("year") int year,
+            @Param("branchCode") String branchCode
+    );
+//
     @Query("SELECT a FROM AdmissionForm a WHERE a.id IN :ids")
     List<AdmissionForm> findAllById(@Param("ids") List<Long> ids);
 
