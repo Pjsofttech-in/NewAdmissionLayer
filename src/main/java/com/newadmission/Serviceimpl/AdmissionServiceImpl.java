@@ -563,14 +563,14 @@ public class AdmissionServiceImpl implements AdmissionService {
                 if (partial.getEmail() != null) existingAdmissionForm.setEmail(partial.getEmail());
                 if (partial.getMobile2() != null) existingAdmissionForm.setMobile2(partial.getMobile2());
                 if (partial.getTransactionId() != null) existingAdmissionForm.setTransactionId(partial.getTransactionId());
-                if (partial.getPendingFees() != null) setNewPendingFees(existingAdmissionForm, partial);
-//                if (partial.getPaidFees() != null) setNewPaidFees(existingAdmissionForm, partial);
                 if (partial.getTotalFees() != null) existingAdmissionForm.setTotalFees(partial.getTotalFees());
                 if (partial.getRemark() != null) existingAdmissionForm.setRemark(partial.getRemark());
                 if (partial.getStatus() != null) existingAdmissionForm.setStatus(partial.getStatus());
                 if (partial.getDueDate() != null) existingAdmissionForm.setDueDate(partial.getDueDate());
                 if (partial.getMediumName() != null) existingAdmissionForm.setMediumName(partial.getMediumName());
                 if (partial.getPaymentMethod() != null) existingAdmissionForm.setPaymentMethod(partial.getPaymentMethod());
+                if (partial.getPendingFees() != null) existingAdmissionForm.setPendingFees(partial.getPendingFees());
+                if (partial.getPaidFees() != null) existingAdmissionForm.setPaidFees(partial.getPaidFees());
                 if (partial.getQualification() != null) existingAdmissionForm.setQualification(partial.getQualification());
                 if (partial.getCity() != null) existingAdmissionForm.setCity(partial.getCity());
                 if (partial.getState() != null) existingAdmissionForm.setState(partial.getState());
@@ -649,12 +649,6 @@ public class AdmissionServiceImpl implements AdmissionService {
 
     }
 
-    private void setNewPendingFees(AdmissionForm existingAdmissionForm, AdmissionForm partial) {
-        if(Objects.nonNull(existingAdmissionForm) && Objects.nonNull(partial) && Objects.equals(existingAdmissionForm.getTotalFees(), partial.getTotalFees())){
-            return;
-        }
-        existingAdmissionForm.setPendingFees(partial.getTotalFees() - existingAdmissionForm.getPaidFees());
-    }
 
     @Override
 //    @CacheEvict(value = "admissionById", key = "#id + '-' + #role + '-' + #email")
