@@ -82,7 +82,7 @@ public interface InstallmentRepository extends JpaRepository<Installment, Long> 
             "AND UPPER(i.status) = 'PAID' " +
             "AND i.branchCode = :branchCode " +
             "GROUP BY YEAR(i.installmentDate) " +
-            "ORDER BY YEAR(i.installmentDate) ASC ")
+            "ORDER BY YEAR(i.installmentDate) ASC")
     List<YearlyRevenueDTO> getInstallmentRevenueByYearRange(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
