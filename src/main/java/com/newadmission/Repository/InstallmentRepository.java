@@ -102,7 +102,7 @@ public interface InstallmentRepository extends JpaRepository<Installment, Long> 
     );
 
     @Query("""
-            SELECT i FROM Installment i LEFT JOIN FETCH i.admission a
+            SELECT i FROM Installment i LEFT JOIN i.admission a
             WHERE lower(i.status) = 'pending' AND i.dueDate BETWEEN :low AND :high
             ORDER BY i.id DESC
             """)
@@ -118,5 +118,26 @@ public interface InstallmentRepository extends JpaRepository<Installment, Long> 
     List<MonthlyRevenueDTO> getInstallmentRevenueByYearMonthWise(
             @Param("year") int year,
             @Param("branchCode") String branchCode
+    );
+
+    @Query("SELECT new com.newadmission.DTO.FeeFilterSummaryDTO(" +
+            // 1. TOTAL: Check dueDate regardless of status
+            "SUM(CASE WHEN (:startDate IS NULL OR i.dueDate >= :startDate) AND (:endDate IS NULL OR i.dueDate <= :endDate) THEN i.amount ELSE 0 END), " +
+            // 2. PAID: Check paymentDate AND status = 'PAID'
+            "SUM(CASE WHEN UPPER(i.status) = 'PAID' AND (:startDate IS NULL OR i.installmentDate >= :startDate) AND (:endDate IS NULL OR i.installmentDate <= :endDate) THEN i.amount ELSE 0 END), " +
+            // 3. PENDING: Check dueDate AND status != 'PAID'
+            "SUM(CASE WHEN UPPER(i.status) != 'PAID' AND (:startDate IS NULL OR i.dueDate >= :startDate) AND (:endDate IS NULL OR i.dueDate <= :endDate) THEN i.amount ELSE 0 END)) " +
+            "FROM Installment i JOIN i.admission a " +
+            "WHERE (:academicYear IS NULL OR a.academicYear = :academicYear) " +
+            "AND (:medium IS NULL OR a.mediumName = :medium) " +
+            "AND (:course IS NULL OR a.coursename = :course) " +
+            "AND (:feesStatus IS NULL OR a.status = :feesStatus) " +
+            "AND (:collectionType IS NULL OR i.paidBy = :collectionType) " +
+            "AND i.branchCode = :branchCode")
+    FeeFilterSummaryDTO getInstallmentFeeSummary(
+            @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate,
+            @Param("academicYear") String academicYear, @Param("medium") String medium,
+            @Param("course") String course, @Param("feesStatus") String feesStatus,
+            @Param("collectionType") String collectionType, @Param("branchCode") String branchCode
     );
 }

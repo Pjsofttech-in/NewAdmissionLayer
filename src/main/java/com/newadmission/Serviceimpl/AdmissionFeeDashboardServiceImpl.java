@@ -274,4 +274,64 @@ public class AdmissionFeeDashboardServiceImpl implements AdmissionFeeDashboardSe
             mergedMap.put(course, mergedMap.getOrDefault(course, 0.0) + data.getTotalAmount());
         }
     }
+
+    @Override
+    public FeeFilterSummaryDTO getAdvancedFeeSummary(
+            String role, String email, String timeFrame, LocalDate customStartDate, LocalDate customEndDate,
+            String academicYear, String medium, String course, String feesStatus, String collectionType) {
+
+        // 1. Security Check
+        if (!staffService.hasPermission(role, email, "GET")) {
+            throw new AccessDeniedException("Unauthorized to view reports");
+        }
+        String branchCode = staffService.fetchBranchCodeByRole(role, email);
+
+        // 2. Resolve the TimeFrame into Date Objects
+        LocalDate startDate = null;
+        LocalDate endDate = null;
+        LocalDate today = LocalDate.now();
+
+        if (timeFrame != null && !timeFrame.trim().isEmpty()) {
+            switch (timeFrame.toUpperCase()) {
+                case "TODAY":
+                    startDate = today;
+                    endDate = today;
+                    break;
+                case "LAST 7 DAYS":
+                    startDate = today.minusDays(7);
+                    endDate = today;
+                    break;
+                case "LAST 30 DAYS":
+                    startDate = today.minusDays(30);
+                    endDate = today;
+                    break;
+                case "LAST 365 DAYS":
+                    startDate = today.minusDays(365);
+                    endDate = today;
+                    break;
+                case "CUSTOM DATE RANGE":
+                    startDate = customStartDate;
+                    endDate = customEndDate;
+                    break;
+            }
+        }
+
+        // 3. Fetch from Admission (Direct Fees)
+        FeeFilterSummaryDTO summary = admissionRepository.getDirectAdmissionFeeSummary(
+                startDate, endDate, academicYear, medium, course, feesStatus, collectionType, branchCode
+        );
+
+        // 4. Fetch from Installments
+        FeeFilterSummaryDTO installmentSummary = installmentRepository.getInstallmentFeeSummary(
+                startDate, endDate, academicYear, medium, course, feesStatus, collectionType, branchCode
+        );
+
+        // 5. Merge the Results
+        if (summary == null) {
+            summary = new FeeFilterSummaryDTO(0.0, 0.0, 0.0);
+        }
+        summary.add(installmentSummary);
+
+        return summary;
+    }
 }

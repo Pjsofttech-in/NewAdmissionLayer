@@ -1,7 +1,9 @@
 package com.newadmission.Service;
 
+import com.newadmission.DTO.FeeFilterSummaryDTO;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -18,4 +20,8 @@ public interface AdmissionFeeDashboardService {
     Map<String, Double> getRevenueByPaymentModeForYear(String role, String email, int year);
 
     Map<String, Double> getRevenueByCourseForYear(String role, String email, int year);
+
+    FeeFilterSummaryDTO getAdvancedFeeSummary(
+            String role, String email, String timeFrame, LocalDate customStartDate, LocalDate customEndDate,
+            String academicYear, String medium, String course, String feesStatus, String collectionType);
 }

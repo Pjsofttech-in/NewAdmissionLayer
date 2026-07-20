@@ -109,6 +109,28 @@ public interface AdmissionRepository extends JpaRepository<AdmissionForm, Long> 
             @Param("year") int year,
             @Param("branchCode") String branchCode
     );
+
+    @Query("SELECT new com.newadmission.DTO.FeeFilterSummaryDTO(" +
+            // 1. TOTAL: Check dueDate
+            "SUM(CASE WHEN (:startDate IS NULL OR a.dueDate >= :startDate) AND (:endDate IS NULL OR a.dueDate <= :endDate) THEN a.totalFees ELSE 0 END), " +
+            // 2. PAID: Check paymentDate
+            "SUM(CASE WHEN (:startDate IS NULL OR a.paymentDate >= :startDate) AND (:endDate IS NULL OR a.paymentDate <= :endDate) THEN a.paidFees ELSE 0 END), " +
+            // 3. PENDING: Check dueDate
+            "SUM(CASE WHEN (:startDate IS NULL OR a.dueDate >= :startDate) AND (:endDate IS NULL OR a.dueDate <= :endDate) THEN a.pendingFees ELSE 0 END)) " +
+            "FROM AdmissionForm a " +
+            "WHERE a.installments IS EMPTY " +
+            "AND (:academicYear IS NULL OR a.academicYear = :academicYear) " +
+            "AND (:medium IS NULL OR a.mediumName = :medium) " +
+            "AND (:course IS NULL OR a.coursename = :course) " +
+            "AND (:feesStatus IS NULL OR a.status = :feesStatus) " +
+            "AND (:collectionType IS NULL OR a.paymentMode = :collectionType) " +
+            "AND a.branchCode = :branchCode")
+    FeeFilterSummaryDTO getDirectAdmissionFeeSummary(
+            @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate,
+            @Param("academicYear") String academicYear, @Param("medium") String medium,
+            @Param("course") String course, @Param("feesStatus") String feesStatus,
+            @Param("collectionType") String collectionType, @Param("branchCode") String branchCode
+    );
 //
     @Query("SELECT a FROM AdmissionForm a WHERE a.id IN :ids")
     List<AdmissionForm> findAllById(@Param("ids") List<Long> ids);
@@ -139,8 +161,8 @@ public interface AdmissionRepository extends JpaRepository<AdmissionForm, Long> 
     Optional<AdmissionForm> findTopByOrderByIdDesc();
 
     @Query("SELECT a FROM AdmissionForm a " +
-            "JOIN a.admissionClassRoom c " +
-            "JOIN c.teachers t " +
+            "JOIN FETCH a.admissionClassRoom c " +
+            "JOIN FETCH c.teachers t " +
             "WHERE t.email = :teacherEmail AND c.id = :classId AND a.branchCode = :branchCode")
     List<AdmissionForm> findByTeacherAndClassroom(String teacherEmail, Long classId, String branchCode);
 
